@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { springGentle, spring } from '../../lib/motion'
+import { AppLogo } from '../../components/AppLogo'
 
 const DOMAIN = import.meta.env.VITE_ALLOWED_EMAIL_DOMAIN || 'iimu.ac.in'
 
@@ -105,11 +106,7 @@ export function LoginScreen({ onLogin, onSimulateEmailLogin, domainError }: Logi
           transition={{ ...spring, delay: 0.05 }}
           className="relative mb-4"
         >
-          <div className="w-[76px] h-[76px] bg-gradient-to-tr from-[#0A84FF] to-[#0055B3] rounded-[22px] flex items-center justify-center shadow-[0_8px_24px_rgba(10,132,255,0.28)] border border-white/20">
-            <span className="text-white text-[28px] font-extrabold tracking-tighter">
-              WN
-            </span>
-          </div>
+          <AppLogo size={78} className="shadow-[0_10px_28px_rgba(10,37,64,0.3)] rounded-[22px]" />
         </motion.div>
 
         {/* App Title & Tagline */}

@@ -1,4 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <rect width="32" height="32" rx="8" fill="#0A84FF"/>
-  <text x="16" y="22" font-family="system-ui, -apple-system, sans-serif" font-size="14" font-weight="700" fill="white" text-anchor="middle">WN</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="120" ry="120" fill="#0A2540" />
+  <rect x="101" y="140" width="310" height="96" rx="48" fill="#FFFFFF" />
+  <rect x="101" y="276" width="194" height="96" rx="48" fill="#5B96F7" />
+  <circle cx="363" cy="324" r="48" fill="#FFA000" />
 </svg>
