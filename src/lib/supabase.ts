@@ -2,8 +2,11 @@ import { createClient } from '@supabase/supabase-js'
 
 function getValidSupabaseUrl(): string {
   const envUrl = (import.meta.env.VITE_SUPABASE_URL as string)?.trim()
-  const raw = envUrl || 'https://kewzjsphblafnuakapam.supabase.co'
-  let clean = raw.replace(/^["']|["']$/g, '').trim()
+  const defaultUrl = 'https://kewzjsphblafnuakapam.supabase.co'
+  if (!envUrl || !envUrl.includes('.') || envUrl.toLowerCase().includes('vite_supabase_url')) {
+    return defaultUrl
+  }
+  let clean = envUrl.replace(/^["']|["']$/g, '').trim()
   if (!clean.startsWith('http://') && !clean.startsWith('https://')) {
     clean = `https://${clean}`
   }
@@ -12,7 +15,11 @@ function getValidSupabaseUrl(): string {
 
 function getValidAnonKey(): string {
   const envKey = (import.meta.env.VITE_SUPABASE_ANON_KEY as string)?.trim()
-  return (envKey || 'sb_publishable_tjddC77NMtW1eULdmBrmVw_N4Cz-beC').replace(/^["']|["']$/g, '').trim()
+  const defaultKey = 'sb_publishable_tjddC77NMtW1eULdmBrmVw_N4Cz-beC'
+  if (!envKey || envKey.toLowerCase().includes('anon_key') || envKey.toLowerCase().includes('vite_')) {
+    return defaultKey
+  }
+  return envKey.replace(/^["']|["']$/g, '').trim()
 }
 
 const supabaseUrl = getValidSupabaseUrl()
