@@ -13,9 +13,30 @@ import { MOCK_CLASS_SESSIONS, MOCK_EVENTS, MOCK_COURSES } from '../lib/mockData'
 import { calculateCourseProgress } from '../lib/courseProgress'
 
 export function useSchedule() {
-  const [classSessions, setClassSessions] = useState<ClassSession[]>(MOCK_CLASS_SESSIONS)
-  const [events, setEvents] = useState<CampusEvent[]>(MOCK_EVENTS)
-  const [courseProgressList, setCourseProgressList] = useState<CourseProgress[]>([])
+  const [classSessions, setClassSessions] = useState<ClassSession[]>(() => {
+    try {
+      const cached = localStorage.getItem('cache_class_sessions')
+      if (cached) return JSON.parse(cached)
+    } catch {}
+    return MOCK_CLASS_SESSIONS
+  })
+
+  const [events, setEvents] = useState<CampusEvent[]>(() => {
+    try {
+      const cached = localStorage.getItem('cache_events')
+      if (cached) return JSON.parse(cached)
+    } catch {}
+    return MOCK_EVENTS
+  })
+
+  const [courseProgressList, setCourseProgressList] = useState<CourseProgress[]>(() => {
+    try {
+      const cached = localStorage.getItem('cache_course_progress')
+      if (cached) return JSON.parse(cached)
+    } catch {}
+    return []
+  })
+
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [currentTime, setCurrentTime] = useState<string>(() =>
@@ -31,8 +52,6 @@ export function useSchedule() {
       return
     }
 
-    setLoading(true)
-    setError(null)
     try {
       const [sessionsRes, eventsRes, progressRes, coursesRes] = await Promise.all([
         supabase
@@ -58,27 +77,25 @@ export function useSchedule() {
 
       if (fetchedSessions.length > 0) {
         setClassSessions(fetchedSessions)
-      } else {
-        setClassSessions(MOCK_CLASS_SESSIONS)
+        try { localStorage.setItem('cache_class_sessions', JSON.stringify(fetchedSessions)) } catch {}
       }
 
       if (fetchedEvents.length > 0) {
         setEvents(fetchedEvents)
-      } else {
-        setEvents(MOCK_EVENTS)
+        try { localStorage.setItem('cache_events', JSON.stringify(fetchedEvents)) } catch {}
       }
 
       if (progressRes.data && progressRes.data.length > 0) {
         setCourseProgressList(progressRes.data)
+        try { localStorage.setItem('cache_course_progress', JSON.stringify(progressRes.data)) } catch {}
       } else if (coursesRes.data && coursesRes.data.length > 0) {
-        setCourseProgressList(calculateCourseProgress(coursesRes.data, fetchedSessions, fetchedEvents))
-      } else {
-        setCourseProgressList(calculateCourseProgress(MOCK_COURSES, MOCK_CLASS_SESSIONS, MOCK_EVENTS))
+        const computed = calculateCourseProgress(coursesRes.data, fetchedSessions, fetchedEvents)
+        setCourseProgressList(computed)
+        try { localStorage.setItem('cache_course_progress', JSON.stringify(computed)) } catch {}
       }
-    } catch {
-      setClassSessions(MOCK_CLASS_SESSIONS)
-      setEvents(MOCK_EVENTS)
-      setCourseProgressList(calculateCourseProgress(MOCK_COURSES, MOCK_CLASS_SESSIONS, MOCK_EVENTS))
+    } catch (err: any) {
+      setError(err.message || 'Failed to sync schedule')
+      console.warn('Schedule background sync notice:', err)
     } finally {
       setLoading(false)
     }

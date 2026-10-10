@@ -4,7 +4,15 @@ import type { InterviewSubmission } from '../types'
 import { MOCK_INTERVIEWS } from '../lib/mockData'
 
 export function useInterviews() {
-  const [submissions, setSubmissions] = useState<InterviewSubmission[]>(MOCK_INTERVIEWS)
+  const [submissions, setSubmissions] = useState<InterviewSubmission[]>(() => {
+    try {
+      const cached =
+        localStorage.getItem('cache_interview_submissions') ||
+        localStorage.getItem('whats_next_interviews')
+      if (cached) return JSON.parse(cached)
+    } catch {}
+    return MOCK_INTERVIEWS
+  })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
@@ -16,8 +24,6 @@ export function useInterviews() {
       return
     }
 
-    setLoading(true)
-    setError(null)
     try {
       const { data, error: err } = await supabase
         .from('interview_submissions')
@@ -26,11 +32,11 @@ export function useInterviews() {
       if (err) throw err
       if (data && data.length > 0) {
         setSubmissions(data)
-      } else {
-        setSubmissions(MOCK_INTERVIEWS)
+        try { localStorage.setItem('cache_interview_submissions', JSON.stringify(data)) } catch {}
       }
-    } catch {
-      setSubmissions(MOCK_INTERVIEWS)
+    } catch (err: any) {
+      setError(err.message || 'Failed to sync interviews')
+      console.warn('Interviews background sync notice:', err)
     } finally {
       setLoading(false)
     }

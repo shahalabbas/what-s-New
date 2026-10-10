@@ -4,7 +4,15 @@ import type { Project, ProjectType } from '../types'
 import { MOCK_PROJECTS } from '../lib/mockData'
 
 export function useProjects() {
-  const [projects, setProjects] = useState<Project[]>(MOCK_PROJECTS)
+  const [projects, setProjects] = useState<Project[]>(() => {
+    try {
+      const cached =
+        localStorage.getItem('cache_projects') ||
+        localStorage.getItem('whats_next_projects')
+      if (cached) return JSON.parse(cached)
+    } catch {}
+    return MOCK_PROJECTS
+  })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<ProjectType | 'all'>('all')
@@ -16,8 +24,6 @@ export function useProjects() {
       return
     }
 
-    setLoading(true)
-    setError(null)
     try {
       const { data, error: err } = await supabase
         .from('projects')
@@ -26,11 +32,11 @@ export function useProjects() {
       if (err) throw err
       if (data && data.length > 0) {
         setProjects(data)
-      } else {
-        setProjects(MOCK_PROJECTS)
+        try { localStorage.setItem('cache_projects', JSON.stringify(data)) } catch {}
       }
-    } catch {
-      setProjects(MOCK_PROJECTS)
+    } catch (err: any) {
+      setError(err.message || 'Failed to sync projects')
+      console.warn('Projects background sync notice:', err)
     } finally {
       setLoading(false)
     }

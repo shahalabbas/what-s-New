@@ -16,9 +16,21 @@ import { useAuth } from './useAuth'
 
 export function usePlacements() {
   const { user } = useAuth()
-  const [opportunities, setOpportunities] = useState<PlacementOpportunity[]>(MOCK_PLACEMENT_OPPORTUNITIES)
+  const [opportunities, setOpportunities] = useState<PlacementOpportunity[]>(() => {
+    try {
+      const cached =
+        localStorage.getItem('cache_placement_opportunities') ||
+        localStorage.getItem('whats_next_placements')
+      if (cached) return JSON.parse(cached)
+    } catch {}
+    return MOCK_PLACEMENT_OPPORTUNITIES
+  })
   const [userApplications, setUserApplications] = useState<Record<string, StudentApplication>>(
     () => {
+      try {
+        const cached = localStorage.getItem('cache_student_applications')
+        if (cached) return JSON.parse(cached)
+      } catch {}
       const map: Record<string, StudentApplication> = {}
       for (const app of MOCK_STUDENT_APPLICATIONS) {
         map[app.opportunity_id] = app
@@ -37,8 +49,6 @@ export function usePlacements() {
       return
     }
 
-    setLoading(true)
-    setError(null)
     try {
       // 1. Fetch Opportunities
       const { data: opps, error: oppErr } = await supabase
@@ -93,7 +103,6 @@ export function usePlacements() {
       }
 
       const mergedOpps = (opps && opps.length > 0 ? opps : MOCK_PLACEMENT_OPPORTUNITIES).map((o) => {
-        // Also match experiences by company name if opportunity_id not set
         const linkedSubs = [
           ...(expMap[o.id] || []),
           ...((submissions || MOCK_SUBMISSIONS).filter(
@@ -111,10 +120,13 @@ export function usePlacements() {
 
       setOpportunities(mergedOpps)
       setUserApplications(appsMap)
+      try {
+        localStorage.setItem('cache_placement_opportunities', JSON.stringify(mergedOpps))
+        localStorage.setItem('cache_student_applications', JSON.stringify(appsMap))
+      } catch {}
     } catch (err: any) {
-      console.error('Error fetching placement opportunities:', err)
-      setError(err.message || 'Failed to load placements')
-      setOpportunities(MOCK_PLACEMENT_OPPORTUNITIES)
+      setError(err.message || 'Failed to sync placements')
+      console.warn('Placements background sync notice:', err)
     } finally {
       setLoading(false)
     }

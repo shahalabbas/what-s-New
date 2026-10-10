@@ -25,10 +25,34 @@ export interface DisplayMealInfo {
 }
 
 export function useMessMenu() {
-  const [todayMenus, setTodayMenus] = useState<MessMenu[]>(() => getMockMessMenus(todayIST()))
-  const [tomorrowMenus, setTomorrowMenus] = useState<MessMenu[]>(() => getMockMessMenus(dayOffsetIST(1)))
-  const [todayDayMenus, setTodayDayMenus] = useState<MessMenuDay[]>(() => getMockDayMenus(todayIST()))
-  const [tomorrowDayMenus, setTomorrowDayMenus] = useState<MessMenuDay[]>(() => getMockDayMenus(dayOffsetIST(1)))
+  const [todayMenus, setTodayMenus] = useState<MessMenu[]>(() => {
+    try {
+      const cached = localStorage.getItem(`cache_mess_today_menus_${todayIST()}`)
+      if (cached) return JSON.parse(cached)
+    } catch {}
+    return getMockMessMenus(todayIST())
+  })
+  const [tomorrowMenus, setTomorrowMenus] = useState<MessMenu[]>(() => {
+    try {
+      const cached = localStorage.getItem(`cache_mess_tmrw_menus_${dayOffsetIST(1)}`)
+      if (cached) return JSON.parse(cached)
+    } catch {}
+    return getMockMessMenus(dayOffsetIST(1))
+  })
+  const [todayDayMenus, setTodayDayMenus] = useState<MessMenuDay[]>(() => {
+    try {
+      const cached = localStorage.getItem(`cache_mess_today_daymenus_${todayIST()}`)
+      if (cached) return JSON.parse(cached)
+    } catch {}
+    return getMockDayMenus(todayIST())
+  })
+  const [tomorrowDayMenus, setTomorrowDayMenus] = useState<MessMenuDay[]>(() => {
+    try {
+      const cached = localStorage.getItem(`cache_mess_tmrw_daymenus_${dayOffsetIST(1)}`)
+      if (cached) return JSON.parse(cached)
+    } catch {}
+    return getMockDayMenus(dayOffsetIST(1))
+  })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [currentTime, setCurrentTime] = useState<string>(() =>
@@ -50,8 +74,6 @@ export function useMessMenu() {
       return
     }
 
-    setLoading(true)
-    setError(null)
     try {
       // 1. Query mess_menu_day view or items + timings
       const [todayRes, tmrwRes] = await Promise.all([
@@ -69,44 +91,42 @@ export function useMessMenu() {
 
       if (todayRes.data && todayRes.data.length > 0) {
         const dms: MessMenuDay[] = todayRes.data
-        setTodayDayMenus(dms)
-        setTodayMenus(dms.map(dm => ({
+        const converted = dms.map((dm) => ({
           id: `m-${dm.meal}-${targetDate}`,
           date: targetDate,
           meal: dm.meal,
-          items: dm.items.map(i => i.name),
+          items: dm.items.map((i) => i.name),
           start_time: dm.start_time,
           end_time: dm.end_time,
-        })))
-      } else {
-        const tdm = getMockDayMenus(targetDate)
-        setTodayDayMenus(tdm)
-        setTodayMenus(getMockMessMenus(targetDate))
+        }))
+        setTodayDayMenus(dms)
+        setTodayMenus(converted)
+        try {
+          localStorage.setItem(`cache_mess_today_daymenus_${targetDate}`, JSON.stringify(dms))
+          localStorage.setItem(`cache_mess_today_menus_${targetDate}`, JSON.stringify(converted))
+        } catch {}
       }
 
       if (tmrwRes.data && tmrwRes.data.length > 0) {
         const dms: MessMenuDay[] = tmrwRes.data
-        setTomorrowDayMenus(dms)
-        setTomorrowMenus(dms.map(dm => ({
+        const converted = dms.map((dm) => ({
           id: `m-${dm.meal}-${tmrwDate}`,
           date: tmrwDate,
           meal: dm.meal,
-          items: dm.items.map(i => i.name),
+          items: dm.items.map((i) => i.name),
           start_time: dm.start_time,
           end_time: dm.end_time,
-        })))
-      } else {
-        const tmdm = getMockDayMenus(tmrwDate)
-        setTomorrowDayMenus(tmdm)
-        setTomorrowMenus(getMockMessMenus(tmrwDate))
+        }))
+        setTomorrowDayMenus(dms)
+        setTomorrowMenus(converted)
+        try {
+          localStorage.setItem(`cache_mess_tmrw_daymenus_${tmrwDate}`, JSON.stringify(dms))
+          localStorage.setItem(`cache_mess_tmrw_menus_${tmrwDate}`, JSON.stringify(converted))
+        } catch {}
       }
-    } catch {
-      const tdm = getMockDayMenus(targetDate)
-      const tmdm = getMockDayMenus(tmrwDate)
-      setTodayDayMenus(tdm)
-      setTomorrowDayMenus(tmdm)
-      setTodayMenus(getMockMessMenus(targetDate))
-      setTomorrowMenus(getMockMessMenus(tmrwDate))
+    } catch (err: any) {
+      setError(err.message || 'Failed to sync mess menu')
+      console.warn('Mess menu background sync notice:', err)
     } finally {
       setLoading(false)
     }

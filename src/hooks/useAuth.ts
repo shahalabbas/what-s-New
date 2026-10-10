@@ -18,11 +18,67 @@ export interface BlockedState {
 }
 
 export function useAuth() {
-  const [user, setUser] = useState<User | null>(null)
-  const [profile, setProfile] = useState<Profile | null>(null)
-  const [allowedCohorts, setAllowedCohorts] = useState<AllowedCohort[]>(DEFAULT_ALLOWED_COHORTS)
-  const [adminEmails, setAdminEmails] = useState<string[]>(DEFAULT_ADMIN_EMAILS)
-  const [loading, setLoading] = useState(true)
+  const [user, setUser] = useState<User | null>(() => {
+    try {
+      const cached = localStorage.getItem('wn_cached_user')
+      if (cached) return JSON.parse(cached)
+      const savedEmail = localStorage.getItem('wn_saved_email')
+      if (savedEmail) {
+        const isAdmin = isAdminEmail(savedEmail, DEFAULT_ADMIN_EMAILS)
+        return { id: isAdmin ? MOCK_ADMIN.id : MOCK_USER.id, email: savedEmail } as User
+      }
+    } catch {}
+    return null
+  })
+
+  const [profile, setProfile] = useState<Profile | null>(() => {
+    try {
+      const cached = localStorage.getItem('wn_cached_profile')
+      if (cached) return JSON.parse(cached)
+      const savedEmail = localStorage.getItem('wn_saved_email')
+      if (savedEmail) {
+        const isAdmin = isAdminEmail(savedEmail, DEFAULT_ADMIN_EMAILS)
+        const parsed = parseIIMUEmail(savedEmail)
+        return {
+          id: isAdmin ? MOCK_ADMIN.id : MOCK_USER.id,
+          email: savedEmail,
+          full_name: savedEmail.split('@')[0].replace('.', ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+          avatar_url: null,
+          program: parsed.program ?? 'dem',
+          batch_year: parsed.batchYear ?? 2026,
+          role: isAdmin ? 'admin' : 'student',
+          created_at: new Date().toISOString(),
+        }
+      }
+    } catch {}
+    return null
+  })
+
+  const [allowedCohorts, setAllowedCohorts] = useState<AllowedCohort[]>(() => {
+    try {
+      const cached = localStorage.getItem('wn_cached_cohorts')
+      if (cached) return JSON.parse(cached)
+    } catch {}
+    return DEFAULT_ALLOWED_COHORTS
+  })
+
+  const [adminEmails, setAdminEmails] = useState<string[]>(() => {
+    try {
+      const cached = localStorage.getItem('wn_cached_admin_emails')
+      if (cached) return JSON.parse(cached)
+    } catch {}
+    return DEFAULT_ADMIN_EMAILS
+  })
+
+  const [loading, setLoading] = useState(() => {
+    try {
+      const hasSession = localStorage.getItem('wn_cached_user') || localStorage.getItem('wn_saved_email')
+      return !hasSession
+    } catch {
+      return true
+    }
+  })
+
   const [blockedState, setBlockedState] = useState<BlockedState>({
     isBlocked: false,
     attemptedEmail: null,
