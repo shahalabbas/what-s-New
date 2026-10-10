@@ -1,18 +1,25 @@
 import React, { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { useSchedule } from '../../hooks/useSchedule'
 import { useMessMenu } from '../../hooks/useMessMenu'
 import { useProjects } from '../../hooks/useProjects'
+import { useInterviews } from '../../hooks/useInterviews'
 import {
   formatTime12,
   dayOffsetIST,
+  todayIST,
   timeToMinutes,
   nowIST,
   formatIST,
+  formatDeadline,
+  secondsUntilDeadline,
+  formatDuration,
 } from '../../lib/timeUtils'
 import { BottomSheet } from '../../components/BottomSheet'
-import type { MealType, CourseProgress, Project } from '../../types'
+import { PlacementDeadlineWidget } from './PlacementDeadlineWidget'
+import type { MealType, Project, ProjectType, InterviewSubmission } from '../../types'
 import { MOCK_TERMS } from '../../lib/mockData'
 
 const MEAL_ICONS: Record<MealType, string> = {
@@ -23,10 +30,18 @@ const MEAL_ICONS: Record<MealType, string> = {
   dinner: '🌙',
 }
 
+const TYPE_COLORS: Record<ProjectType, { bg: string; text: string; label: string }> = {
+  assignment: { bg: 'bg-blue-50 text-blue-700 border-blue-200/60', text: '#0A84FF', label: 'Assignment' },
+  project: { bg: 'bg-emerald-50 text-emerald-700 border-emerald-200/60', text: '#34C759', label: 'Project' },
+  'end-term': { bg: 'bg-rose-50 text-rose-700 border-rose-200/60', text: '#FF3B30', label: 'End-term' },
+}
+
 export function Dashboard() {
+  const navigate = useNavigate()
   const schedule = useSchedule()
   const mess = useMessMenu()
   const projects = useProjects()
+  const interviews = useInterviews()
   const { user, profile, signOut } = useAuth()
 
   // Pull-to-refresh state
@@ -34,12 +49,13 @@ export function Dashboard() {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const touchStartY = useRef(0)
 
-  // Full day food & schedule sheet states
+  // Sheet states
   const [showFoodSheet, setShowFoodSheet] = useState(false)
   const [foodSheetOffset, setFoodSheetOffset] = useState<number>(0)
   const [showScheduleSheet, setShowScheduleSheet] = useState(false)
   const [scheduleSheetOffset, setScheduleSheetOffset] = useState<number>(0)
   const [showProfileSheet, setShowProfileSheet] = useState(false)
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null)
 
   const handleTouchStart = (e: React.TouchEvent) => {
     if (window.scrollY === 0) {
@@ -61,7 +77,7 @@ export function Dashboard() {
     if (pullY > 45 && !isRefreshing) {
       setIsRefreshing(true)
       setPullY(45)
-      await Promise.all([schedule.refresh(), mess.refresh(), projects.refresh()])
+      await Promise.all([schedule.refresh(), mess.refresh(), projects.refresh(), interviews.refresh()])
       setIsRefreshing(false)
     }
     setPullY(0)
@@ -74,15 +90,10 @@ export function Dashboard() {
 
   // Derive term week from DB term start date
   const termStartDate = MOCK_TERMS[0]?.start_date || '2026-09-21'
-  const termEndDate = MOCK_TERMS[0]?.end_date || '2026-12-19'
-  const termName = MOCK_TERMS[0]?.term_name || 'Term III'
-
   const startMillis = new Date(termStartDate + 'T00:00:00').getTime()
-  const endMillis = new Date(termEndDate + 'T00:00:00').getTime()
   const currentMillis = todayDateObj.getTime()
   const diffDays = Math.max(0, Math.floor((currentMillis - startMillis) / (1000 * 60 * 60 * 24)))
   const termWeek = Math.max(1, Math.floor(diffDays / 7) + 1)
-  const totalWeeks = Math.max(1, Math.ceil((endMillis - startMillis) / (1000 * 60 * 60 * 24 * 7)))
 
   // Schedule sheet computed data
   const scheduleTargetDate = dayOffsetIST(scheduleSheetOffset)
@@ -160,16 +171,21 @@ export function Dashboard() {
           />
         </div>
 
-        {/* 3. COURSE PROGRESS SECTION (Strictly from DB course_progress & sessions) */}
-        <CourseProgressSection
-          progressList={schedule.courseProgressList}
-          termName={termName}
-          termWeek={termWeek}
-          totalWeeks={totalWeeks}
+        {/* 2. PLACEMENT OPPORTUNITY (Live Countdown above projects) */}
+        <PlacementDeadlineWidget />
+
+        {/* 3. PROJECTS & ASSIGNMENTS SECTION */}
+        <DashboardProjectsSection
+          projects={projects.upcoming}
+          onSelectProject={(p) => setSelectedProject(p)}
+          onViewAll={() => navigate('/projects')}
         />
 
-        {/* 4. DUE SOON SECTION (Strictly from DB projects/assignments) */}
-        <DueSoonSection projects={projects.upcoming} />
+        {/* 4. INTERVIEW INSIGHTS & EXPERIENCES */}
+        <DashboardInterviewsSection
+          submissions={interviews.submissions}
+          onViewAll={() => navigate('/interviews')}
+        />
       </main>
 
       {/* ─── FULL DAY SCHEDULE SHEET ────────────────────────────────────────── */}
@@ -574,6 +590,95 @@ export function Dashboard() {
           </motion.button>
         </div>
       </BottomSheet>
+
+      {/* ─── PROJECT DETAIL BOTTOM SHEET ───────────────────────────────────── */}
+      <BottomSheet
+        isOpen={Boolean(selectedProject)}
+        onClose={() => setSelectedProject(null)}
+        title={selectedProject ? selectedProject.title : 'Project Details'}
+      >
+        {selectedProject && (
+          <div className="p-5 space-y-4">
+            {/* Type + Course Code */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span
+                className={`text-xs font-bold px-2.5 py-1 rounded-full border ${
+                  TYPE_COLORS[selectedProject.type]?.bg || 'bg-slate-100 text-slate-700'
+                }`}
+              >
+                {TYPE_COLORS[selectedProject.type]?.label || selectedProject.type}
+              </span>
+              {selectedProject.course && (
+                <span className="text-xs font-semibold text-secondary-text bg-surface px-2.5 py-1 rounded-full border border-border">
+                  {selectedProject.course.code} · {selectedProject.course.name}
+                </span>
+              )}
+            </div>
+
+            {/* Deadline Card */}
+            <div className="p-4 rounded-2xl bg-surface border border-border space-y-1">
+              <p className="text-xs font-semibold text-secondary-text">Submission Deadline</p>
+              <p className="text-sm font-bold text-primary-text">
+                {formatDeadline(selectedProject.deadline)}
+              </p>
+              {(() => {
+                const secs = secondsUntilDeadline(selectedProject.deadline)
+                const isPast = secs <= 0
+                return (
+                  <p className={`text-xs font-bold ${isPast ? 'text-secondary-text' : secs < 86400 * 2 ? 'text-danger' : 'text-soon'}`}>
+                    {isPast ? 'Deadline passed' : `${formatDuration(secs)} remaining`}
+                  </p>
+                )
+              })()}
+            </div>
+
+            {/* Description */}
+            {selectedProject.description && (
+              <div className="space-y-1.5">
+                <p className="text-xs font-bold text-secondary-text uppercase tracking-wider">
+                  Description
+                </p>
+                <div className="bg-surface/60 rounded-2xl p-3.5 border border-border text-xs text-primary-text leading-relaxed whitespace-pre-wrap">
+                  {selectedProject.description}
+                </div>
+              </div>
+            )}
+
+            {/* Group Size */}
+            {selectedProject.group_size > 1 && (
+              <div className="flex items-center gap-2 bg-surface rounded-xl p-3 border border-border text-xs font-semibold text-primary-text">
+                <span className="text-base">👥</span>
+                <span>Group Deliverable (Max {selectedProject.group_size} members)</span>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="space-y-2 pt-2">
+              {selectedProject.submission_link && (
+                <a
+                  href={selectedProject.submission_link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full py-3 bg-accent text-white rounded-2xl text-xs font-bold shadow-sm hover:opacity-95 transition-all flex items-center justify-center gap-2"
+                >
+                  <span>Open Submission Portal</span>
+                  <span>↗</span>
+                </a>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedProject(null)
+                  navigate('/projects')
+                }}
+                className="w-full py-3 bg-surface text-primary-text border border-border rounded-2xl text-xs font-bold hover:bg-slate-200/60 transition-colors"
+              >
+                Go to Projects Screen →
+              </button>
+            </div>
+          </div>
+        )}
+      </BottomSheet>
     </div>
   )
 }
@@ -582,6 +687,237 @@ export function Dashboard() {
 // 1. UP NEXT CARD (Left Column - strictly DB bound)
 // ═════════════════════════════════════════════════════════════════════════════
 
+function getUpNextScheduleItem(
+  schedule: ReturnType<typeof useSchedule>
+): {
+  isEvent: boolean
+  isLive: boolean
+  timeDisplay: string
+  titleDisplay: string
+  subtitle: string
+  pillText: string
+  eventTypeBadge?: string
+} | null {
+  const { currentSession, nextSession, currentTime, extendedState, events, classSessions } = schedule
+  const today = todayIST()
+  const curMins = timeToMinutes(currentTime)
+
+  // 1. Check if an event is active right now
+  const liveEvent = events.find((e) => {
+    if (e.date !== today || e.status === 'cancelled') return false
+    if (!e.start_time || !e.end_time) return false
+    const start = timeToMinutes(e.start_time)
+    const end = timeToMinutes(e.end_time)
+    return curMins >= start && curMins < end
+  })
+
+  if (liveEvent) {
+    const formattedType = liveEvent.type.replace(/_/g, ' ')
+    const timeDisplay = formatTime12(liveEvent.start_time!).replace(/\s?(AM|PM)/i, '')
+    return {
+      isEvent: true,
+      isLive: true,
+      timeDisplay,
+      titleDisplay: liveEvent.title,
+      subtitle: liveEvent.venue ? `📍 ${liveEvent.venue}` : (liveEvent.company || formattedType),
+      pillText: 'LIVE NOW · Event',
+      eventTypeBadge: formattedType,
+    }
+  }
+
+  // 2. Check if a class is active right now
+  if (currentSession) {
+    const timeDisplay = formatTime12(currentSession.start_time).replace(/\s?(AM|PM)/i, '')
+    const titleDisplay = currentSession.course?.name || currentSession.course_id || 'Class Session'
+    const facultyName = currentSession.course?.faculty
+    const sessionNo = currentSession.session_no || 1
+    const totalSessions = currentSession.course?.total_sessions || 20
+    return {
+      isEvent: false,
+      isLive: true,
+      timeDisplay,
+      titleDisplay,
+      subtitle: facultyName
+        ? (facultyName.startsWith('Prof') ? facultyName : `Prof. ${facultyName}`)
+        : (currentSession.room ? `📍 ${currentSession.room}` : ''),
+      pillText: `LIVE NOW · S${sessionNo}/${totalSessions}`,
+    }
+  }
+
+  // 3. Upcoming today: compare next upcoming event today vs next class today
+  const todayUpcomingEvents = events
+    .filter(
+      (e) =>
+        e.date === today &&
+        e.status !== 'cancelled' &&
+        e.start_time &&
+        timeToMinutes(e.start_time) > curMins
+    )
+    .sort((a, b) => timeToMinutes(a.start_time!) - timeToMinutes(b.start_time!))
+  const nextEventToday = todayUpcomingEvents[0]
+
+  if (nextEventToday && nextSession) {
+    const eventMins = timeToMinutes(nextEventToday.start_time!)
+    const classMins = timeToMinutes(nextSession.start_time)
+    if (eventMins <= classMins) {
+      const diffMins = Math.max(0, eventMins - curMins)
+      const diffText = diffMins > 60 ? `in ${Math.floor(diffMins / 60)}h ${diffMins % 60}m` : `in ${diffMins}m`
+      const formattedType = nextEventToday.type.replace(/_/g, ' ')
+      return {
+        isEvent: true,
+        isLive: false,
+        timeDisplay: formatTime12(nextEventToday.start_time!).replace(/\s?(AM|PM)/i, ''),
+        titleDisplay: nextEventToday.title,
+        subtitle: nextEventToday.venue ? `📍 ${nextEventToday.venue}` : (nextEventToday.company || formattedType),
+        pillText: `${diffText} · Event`,
+        eventTypeBadge: formattedType,
+      }
+    }
+  } else if (nextEventToday && !nextSession) {
+    const eventMins = timeToMinutes(nextEventToday.start_time!)
+    const diffMins = Math.max(0, eventMins - curMins)
+    const diffText = diffMins > 60 ? `in ${Math.floor(diffMins / 60)}h ${diffMins % 60}m` : `in ${diffMins}m`
+    const formattedType = nextEventToday.type.replace(/_/g, ' ')
+    return {
+      isEvent: true,
+      isLive: false,
+      timeDisplay: formatTime12(nextEventToday.start_time!).replace(/\s?(AM|PM)/i, ''),
+      titleDisplay: nextEventToday.title,
+      subtitle: nextEventToday.venue ? `📍 ${nextEventToday.venue}` : (nextEventToday.company || formattedType),
+      pillText: `${diffText} · Event`,
+      eventTypeBadge: formattedType,
+    }
+  }
+
+  // If nextSession is up next today
+  if (nextSession) {
+    const timeDisplay = formatTime12(nextSession.start_time).replace(/\s?(AM|PM)/i, '')
+    const titleDisplay = nextSession.course?.name || nextSession.course_id || 'Class Session'
+    const facultyName = nextSession.course?.faculty
+    const sessionNo = nextSession.session_no || 1
+    const totalSessions = nextSession.course?.total_sessions || 20
+    const targetMins = timeToMinutes(nextSession.start_time)
+    const diffMins = Math.max(0, targetMins - curMins)
+    const diffText = diffMins > 60 ? `in ${Math.floor(diffMins / 60)}h ${diffMins % 60}m` : `in ${diffMins}m`
+    return {
+      isEvent: false,
+      isLive: false,
+      timeDisplay,
+      titleDisplay,
+      subtitle: facultyName
+        ? (facultyName.startsWith('Prof') ? facultyName : `Prof. ${facultyName}`)
+        : (nextSession.room ? `📍 ${nextSession.room}` : ''),
+      pillText: `${diffText} · S${sessionNo}/${totalSessions}`,
+    }
+  }
+
+  // 4. All-day event today
+  const allDayEventToday = events.find(
+    (e) => e.date === today && e.status !== 'cancelled' && (e.all_day || !e.start_time)
+  )
+  if (allDayEventToday) {
+    const formattedType = allDayEventToday.type.replace(/_/g, ' ')
+    return {
+      isEvent: true,
+      isLive: false,
+      timeDisplay: 'All Day',
+      titleDisplay: allDayEventToday.title,
+      subtitle: allDayEventToday.venue ? `📍 ${allDayEventToday.venue}` : formattedType,
+      pillText: 'Today · Event',
+      eventTypeBadge: formattedType,
+    }
+  }
+
+  // 5. Future day check (across next 14 days)
+  const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+  let earliestFutureItem: {
+    offset: number
+    dateStr: string
+    dayLabel: string
+    classSession?: any
+    event?: any
+  } | null = null
+
+  for (let offset = 1; offset <= 14; offset++) {
+    const targetDate = dayOffsetIST(offset)
+    const dayOfWeek = new Date(targetDate + 'T00:00:00+05:30').getDay()
+    const dayLabel = offset === 1 ? 'Tomorrow' : DAY_NAMES[dayOfWeek]
+
+    const dayClasses = classSessions.filter((s) => s.date === targetDate && s.status !== 'cancelled')
+    const dayEvs = events.filter((e) => e.date === targetDate && e.status !== 'cancelled')
+
+    if (dayClasses.length > 0 || dayEvs.length > 0) {
+      if (dayEvs.length > 0 && dayClasses.length > 0) {
+        const firstClass = dayClasses[0]
+        const firstEv = dayEvs[0]
+        const classMins = timeToMinutes(firstClass.start_time)
+        const evMins = firstEv.start_time ? timeToMinutes(firstEv.start_time) : 0
+        if (firstEv.start_time && evMins <= classMins) {
+          earliestFutureItem = { offset, dateStr: targetDate, dayLabel, event: firstEv }
+        } else {
+          earliestFutureItem = { offset, dateStr: targetDate, dayLabel, classSession: firstClass }
+        }
+      } else if (dayEvs.length > 0) {
+        earliestFutureItem = { offset, dateStr: targetDate, dayLabel, event: dayEvs[0] }
+      } else {
+        earliestFutureItem = { offset, dateStr: targetDate, dayLabel, classSession: dayClasses[0] }
+      }
+      break
+    }
+  }
+
+  if (earliestFutureItem?.event) {
+    const ev = earliestFutureItem.event
+    const formattedType = ev.type.replace(/_/g, ' ')
+    const timeDisplay = ev.start_time ? formatTime12(ev.start_time).replace(/\s?(AM|PM)/i, '') : 'All Day'
+    return {
+      isEvent: true,
+      isLive: false,
+      timeDisplay,
+      titleDisplay: ev.title,
+      subtitle: ev.venue ? `📍 ${ev.venue}` : (ev.company || formattedType),
+      pillText: `${earliestFutureItem.dayLabel} · Event`,
+      eventTypeBadge: formattedType,
+    }
+  }
+
+  if (earliestFutureItem?.classSession) {
+    const cs = earliestFutureItem.classSession
+    const timeDisplay = formatTime12(cs.start_time).replace(/\s?(AM|PM)/i, '')
+    const titleDisplay = cs.course?.name || cs.course_id || 'Class Session'
+    const facultyName = cs.course?.faculty || cs.faculty
+    const sessionNo = cs.session_no || 1
+    const totalSessions = cs.course?.total_sessions || 20
+    return {
+      isEvent: false,
+      isLive: false,
+      timeDisplay,
+      titleDisplay,
+      subtitle: facultyName ? (facultyName.startsWith('Prof') ? facultyName : `Prof. ${facultyName}`) : (cs.room ? `📍 ${cs.room}` : ''),
+      pillText: `${earliestFutureItem.dayLabel} · S${sessionNo}/${totalSessions}`,
+    }
+  }
+
+  if (extendedState.futureDayInfo?.session) {
+    const s = extendedState.futureDayInfo.session
+    const timeDisplay = formatTime12(s.start_time).replace(/\s?(AM|PM)/i, '')
+    const titleDisplay = s.course?.name || s.course_id || 'Class Session'
+    const facultyName = s.course?.faculty
+    const sessionNo = s.session_no || 1
+    const totalSessions = s.course?.total_sessions || 20
+    return {
+      isEvent: false,
+      isLive: false,
+      timeDisplay,
+      titleDisplay,
+      subtitle: facultyName ? (facultyName.startsWith('Prof') ? facultyName : `Prof. ${facultyName}`) : (s.room ? `📍 ${s.room}` : ''),
+      pillText: `${extendedState.futureDayInfo.dayLabel} · S${sessionNo}/${totalSessions}`,
+    }
+  }
+
+  return null
+}
+
 function UpNextCard({
   schedule,
   onTap,
@@ -589,13 +925,9 @@ function UpNextCard({
   schedule: ReturnType<typeof useSchedule>
   onTap: () => void
 }) {
-  const { currentSession, nextSession, currentTime, extendedState } = schedule
+  const item = getUpNextScheduleItem(schedule)
 
-  // The active session is either currently live, or the next session today, or next scheduled day
-  const displaySession = currentSession || nextSession || extendedState.futureDayInfo?.session
-  const isLive = Boolean(currentSession)
-
-  if (!displaySession) {
+  if (!item) {
     return (
       <motion.div
         whileTap={{ scale: 0.97 }}
@@ -622,48 +954,52 @@ function UpNextCard({
     )
   }
 
-  const timeDisplay = formatTime12(displaySession.start_time).replace(/\s?(AM|PM)/i, '')
-  const titleDisplay = displaySession.course?.name || displaySession.course_id || 'Class Session'
-  const facultyName = displaySession.course?.faculty
-  const sessionNo = displaySession.session_no || 1
-  const totalSessions = displaySession.course?.total_sessions || 20
-
-  const curMins = timeToMinutes(currentTime)
-  const targetMins = timeToMinutes(displaySession.start_time)
-  const isToday = isLive || displaySession.id === nextSession?.id
-  const diffMins = isToday ? Math.max(0, targetMins - curMins) : 0
-  const diffText = isLive
-    ? 'LIVE NOW'
-    : isToday
-    ? (diffMins > 60 ? `in ${Math.floor(diffMins / 60)}h ${diffMins % 60}m` : `in ${diffMins}m`)
-    : (extendedState.futureDayInfo?.dayLabel || 'Upcoming')
-
   return (
     <motion.div
       whileTap={{ scale: 0.97 }}
       onClick={onTap}
       className={`rounded-[26px] border shadow-2xs p-4 flex flex-col justify-between min-h-[168px] cursor-pointer transition-all ${
-        isLive ? 'bg-emerald-50/40 border-emerald-200 hover:border-emerald-300' : 'bg-white border-slate-100 hover:border-slate-200'
+        item.isLive
+          ? item.isEvent
+            ? 'bg-purple-50/50 border-purple-200 hover:border-purple-300'
+            : 'bg-emerald-50/40 border-emerald-200 hover:border-emerald-300'
+          : item.isEvent
+          ? 'bg-white border-indigo-100/80 hover:border-indigo-200'
+          : 'bg-white border-slate-100 hover:border-slate-200'
       }`}
     >
       <div>
         <div className="flex items-center justify-between">
           <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">
-            {isLive ? 'CURRENT CLASS' : 'UP NEXT'}
+            {item.isLive ? (item.isEvent ? 'CURRENT EVENT' : 'CURRENT CLASS') : item.isEvent ? 'UPCOMING EVENT' : 'UP NEXT'}
           </span>
-          {isLive && (
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          )}
+          {item.isLive ? (
+            <span
+              className={`w-2 h-2 rounded-full animate-pulse ${
+                item.isEvent ? 'bg-purple-500' : 'bg-emerald-500'
+              }`}
+            />
+          ) : item.isEvent ? (
+            <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200/60">
+              {item.eventTypeBadge || 'Event'}
+            </span>
+          ) : null}
         </div>
+
         <div className="text-2xl font-black text-[#0F2942] tracking-tight mt-1 font-mono">
-          {timeDisplay}
+          {item.timeDisplay}
         </div>
-        <h3 className="text-xs font-bold text-slate-800 line-clamp-1 mt-1 leading-snug" title={titleDisplay}>
-          {titleDisplay}
+
+        <h3
+          className="text-xs font-bold text-slate-800 line-clamp-1 mt-1 leading-snug"
+          title={item.titleDisplay}
+        >
+          {item.titleDisplay}
         </h3>
-        {facultyName && (
+
+        {item.subtitle && (
           <p className="text-[11px] font-medium text-slate-500 truncate mt-0.5">
-            {facultyName.startsWith('Prof') ? facultyName : `Prof. ${facultyName}`}
+            {item.subtitle}
           </p>
         )}
       </div>
@@ -671,10 +1007,16 @@ function UpNextCard({
       <div className="mt-3">
         <span
           className={`inline-flex items-center gap-1 font-bold text-[10px] px-2.5 py-1 rounded-full truncate max-w-full ${
-            isLive ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-50 text-blue-600'
+            item.isLive
+              ? item.isEvent
+                ? 'bg-purple-100 text-purple-800'
+                : 'bg-emerald-100 text-emerald-800'
+              : item.isEvent
+              ? 'bg-indigo-50 text-indigo-700 border border-indigo-100'
+              : 'bg-blue-50 text-blue-600'
           }`}
         >
-          {diffText} · S{sessionNo}/{totalSessions}
+          {item.pillText}
         </span>
       </div>
     </motion.div>
@@ -779,135 +1121,208 @@ function FoodCard({
   )
 }
 
+
 // ═════════════════════════════════════════════════════════════════════════════
-// 5. COURSE PROGRESS SECTION (Strictly DB bound, harmonious blue shades)
+// 2. DASHBOARD PROJECTS & ASSIGNMENTS SECTION
 // ═════════════════════════════════════════════════════════════════════════════
 
-const BLUE_SHADES = [
-  '#007AFF', // Vibrant Blue
-  '#0F2942', // Deep Navy Blue
-  '#2563EB', // Royal Blue
-  '#1D4ED8', // Dark Royal Blue
-  '#0284C7', // Slate Ocean Blue
-  '#3B82F6', // Sky Deep Blue
-  '#1E40AF', // Midnight Blue
-]
-
-function CourseProgressSection({
-  progressList,
-  termName,
-  termWeek,
-  totalWeeks,
+function DashboardProjectsSection({
+  projects,
+  onSelectProject,
+  onViewAll,
 }: {
-  progressList: CourseProgress[]
-  termName: string
-  termWeek: number
-  totalWeeks: number
+  projects: Project[]
+  onSelectProject: (p: Project) => void
+  onViewAll: () => void
 }) {
-  if (!progressList || progressList.length === 0) {
-    return null
-  }
-
-  // Display top courses from DB
-  const displayCourses = progressList.slice(0, 4)
+  const upcomingList = projects.slice(0, 3)
 
   return (
-    <section className="bg-white rounded-[26px] border border-slate-100 shadow-2xs p-4.5 space-y-3.5">
+    <section className="bg-white rounded-[26px] border border-slate-100 shadow-2xs p-4.5 space-y-3">
+      {/* Section Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-xs font-extrabold text-slate-400 tracking-wider uppercase">
-          COURSE PROGRESS
-        </h2>
-        <span className="text-xs font-medium text-slate-400">
-          {termName} · week {termWeek} of {totalWeeks}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-sm">📚</span>
+          <h2 className="text-xs font-extrabold text-slate-400 tracking-wider uppercase">
+            Projects & Deadlines
+          </h2>
+          {upcomingList.length > 0 && (
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600">
+              {upcomingList.length} upcoming
+            </span>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={onViewAll}
+          className="text-xs font-bold text-accent hover:opacity-80 transition-opacity flex items-center gap-0.5"
+        >
+          <span>View all</span>
+          <span>→</span>
+        </button>
       </div>
 
-      <div className="space-y-3">
-        {displayCourses.map((item, idx) => {
-          const completed = item.completed_sessions
-          const total = item.total_sessions || 20
-          const pct = item.percent_complete
-          const barColor = BLUE_SHADES[idx % BLUE_SHADES.length]
-          const facultyName = item.faculty
-            ? item.faculty.startsWith('Prof')
-              ? item.faculty
-              : `Prof. ${item.faculty}`
-            : null
+      {/* Projects List or Empty State */}
+      {upcomingList.length > 0 ? (
+        <div className="space-y-2.5">
+          {upcomingList.map((item) => {
+            const secs = secondsUntilDeadline(item.deadline)
+            const isPast = secs <= 0
+            const isUrgent = secs > 0 && secs < 86400 * 2
+            const typeConfig = TYPE_COLORS[item.type] || {
+              bg: 'bg-slate-50 text-slate-700 border-slate-200/60',
+              label: item.type,
+            }
 
-          return (
-            <div key={item.course_id || item.course_code} className="space-y-1">
-              <div className="flex items-center justify-between text-xs">
-                <div className="flex items-baseline gap-1.5 truncate max-w-[70%]">
-                  <span className="font-black text-slate-800 tracking-tight">
-                    {item.course_code}
+            return (
+              <motion.div
+                key={item.id}
+                data-testid="dashboard-project-card"
+                whileTap={{ scale: 0.98 }}
+                onClick={() => onSelectProject(item)}
+                className="p-3 rounded-2xl bg-surface/70 hover:bg-surface border border-border/80 cursor-pointer transition-all space-y-1.5"
+              >
+                {/* Top Row: Type Badge + Course Tag + Countdown */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${typeConfig.bg}`}
+                    >
+                      {typeConfig.label}
+                    </span>
+                    {item.course && (
+                      <span className="text-[10px] font-semibold text-secondary-text">
+                        {item.course.code}
+                      </span>
+                    )}
+                  </div>
+
+                  <span
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      isPast
+                        ? 'bg-slate-100 text-slate-500'
+                        : isUrgent
+                        ? 'bg-amber-100 text-amber-800 animate-pulse'
+                        : 'bg-blue-50 text-blue-700'
+                    }`}
+                  >
+                    {isPast ? 'Passed' : formatDuration(secs) + ' left'}
                   </span>
-                  {facultyName && (
-                    <span className="text-[11px] font-medium text-slate-500 truncate" title={facultyName}>
-                      · {facultyName}
+                </div>
+
+                {/* Title */}
+                <h3 className="text-xs font-bold text-primary-text line-clamp-1">
+                  {item.title}
+                </h3>
+
+                {/* Sub-info: Formatted date & group size */}
+                <div className="flex items-center justify-between text-[11px] text-secondary-text pt-0.5">
+                  <span className="truncate">{formatDeadline(item.deadline)}</span>
+                  {item.group_size > 1 && (
+                    <span className="text-[10px] font-medium text-slate-500">
+                      👥 Group of {item.group_size}
                     </span>
                   )}
                 </div>
-
-                <span className="text-right font-bold text-slate-500 font-mono text-[11px] flex-shrink-0">
-                  {completed}/{total}
-                </span>
-              </div>
-
-              <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all duration-500"
-                  style={{ width: `${pct}%`, backgroundColor: barColor }}
-                />
-              </div>
-            </div>
-          )
-        })}
-      </div>
+              </motion.div>
+            )
+          })}
+        </div>
+      ) : (
+        <div className="py-5 text-center bg-surface/50 rounded-2xl border border-dashed border-border space-y-1.5">
+          <span className="text-2xl">🎉</span>
+          <p className="text-xs font-bold text-primary-text">No Upcoming Deadlines</p>
+          <p className="text-[11px] text-secondary-text">You're completely caught up on assignments.</p>
+        </div>
+      )}
     </section>
   )
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// 6. DUE SOON SECTION (Strictly DB bound)
+// 3. DASHBOARD INTERVIEWS & PLACEMENTS HUB
 // ═════════════════════════════════════════════════════════════════════════════
 
-function DueSoonSection({ projects }: { projects: Project[] }) {
-  if (!projects || projects.length === 0) {
-    return null
-  }
+function DashboardInterviewsSection({
+  submissions,
+  onViewAll,
+}: {
+  submissions: InterviewSubmission[]
+  onViewAll: () => void
+}) {
+  const recentSubmissions = submissions.slice(0, 2)
 
   return (
     <section className="bg-white rounded-[26px] border border-slate-100 shadow-2xs p-4.5 space-y-3">
-      <h2 className="text-xs font-extrabold text-slate-400 tracking-wider uppercase">
-        DUE SOON
-      </h2>
-
-      <div className="space-y-2.5">
-        {projects.slice(0, 3).map((item) => {
-          const d = new Date(item.deadline)
-          const diffDays = Math.ceil((d.getTime() - Date.now()) / (1000 * 3600 * 24))
-          let dayLabel = d.toLocaleDateString('en-IN', { weekday: 'short' })
-          if (diffDays <= 0) dayLabel = 'Today'
-          else if (diffDays === 1) dayLabel = 'Tmrw'
-
-          const isUrgent = diffDays <= 2
-
-          return (
-            <div key={item.id} className="flex items-center justify-between gap-3">
-              <span className="text-xs font-bold text-slate-800 flex-1 truncate" title={item.description || item.title}>
-                {item.title}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-sm">💬</span>
+            <h2 className="text-xs font-extrabold text-slate-400 tracking-wider uppercase">
+              Interview Insights
+            </h2>
+            {submissions.length > 0 && (
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                {submissions.length} shared
               </span>
-              <span
-                className={`text-xs font-bold ${
-                  isUrgent ? 'text-[#D97706]' : 'text-slate-400 font-semibold'
-                }`}
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={onViewAll}
+            className="text-xs font-bold text-accent hover:opacity-80 transition-opacity flex items-center gap-0.5"
+          >
+            <span>View all</span>
+            <span>→</span>
+          </button>
+        </div>
+
+        {recentSubmissions.length > 0 ? (
+          <div className="space-y-2.5">
+            {recentSubmissions.map((sub) => (
+              <motion.div
+                key={sub.id}
+                whileTap={{ scale: 0.98 }}
+                onClick={onViewAll}
+                className="p-3 rounded-2xl bg-surface/70 hover:bg-surface border border-border/80 cursor-pointer transition-all space-y-1.5"
               >
-                {dayLabel}
-              </span>
-            </div>
-          )
-        })}
-      </div>
-    </section>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-bold text-primary-text truncate">
+                    {sub.company}
+                  </span>
+                  {sub.outcome && (
+                    <span
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full capitalize ${
+                        sub.outcome.toLowerCase().includes('select') || sub.outcome.toLowerCase().includes('offer')
+                          ? 'bg-emerald-50 text-emerald-700'
+                          : 'bg-blue-50 text-blue-700'
+                      }`}
+                    >
+                      {sub.outcome}
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-1.5 text-[11px] text-secondary-text">
+                  <span className="font-semibold text-primary-text">{sub.role}</span>
+                  {sub.round_type && <span>· {sub.round_type}</span>}
+                </div>
+
+                {(sub.tips || sub.questions) && (
+                  <p className="text-[11px] text-slate-600 line-clamp-1 italic bg-white/70 px-2 py-1 rounded-lg border border-border/40">
+                    "{sub.tips || sub.questions}"
+                  </p>
+                )}
+              </motion.div>
+            ))}
+          </div>
+        ) : (
+          <div className="py-4 text-center bg-surface/50 rounded-2xl border border-dashed border-border space-y-1">
+            <p className="text-xs font-semibold text-primary-text">Prepare for upcoming placements</p>
+            <p className="text-[11px] text-secondary-text">
+              View round formats, questions, and preparation tips from seniors and peers.
+            </p>
+          </div>
+        )}
+      </section>
   )
 }

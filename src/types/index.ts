@@ -157,10 +157,77 @@ export interface InterviewSubmission {
   program?: string
   batch_year?: number
   created_at: string
+  opportunity_id?: string | null
   profile?: {
     full_name: string | null
     avatar_url: string | null
   }
+}
+
+export type PlacementStatus =
+  | 'open'
+  | 'extended'
+export type PlacementStage =
+  | 'open_for_application'
+  | 'deadline_extended'
+  | 'application_closed'
+  | 'shortlist'
+  | 'test'
+  | 'group_discussion'
+  | 'interview'
+  | 'result'
+  | 'pre_placement_talk'
+  | 'other'
+
+export interface PlacementAdditionalDetail {
+  label: string
+  value: string
+}
+
+export type PlacementSource = 'superset' | 'manual'
+
+export interface PlacementOpportunity {
+  id: string
+  program: string
+  batch_year: number
+  source: PlacementSource
+  external_job_id: string | null
+  company: string
+  role: string
+  stage: PlacementStage
+  deadline_at: string | null
+  application_start?: string | null
+  event_at?: string | null
+  venue_or_link?: string | null
+  apply_url: string | null
+  additional_details: PlacementAdditionalDetail[]
+  notes?: string | null
+  message_id?: string | null
+  created_by?: string | null
+  created_at?: string
+  updated_at?: string
+  student_application?: StudentApplication | null
+  updates?: PlacementUpdate[]
+  experiences?: InterviewSubmission[]
+}
+
+export interface PlacementUpdate {
+  id: string
+  opportunity_id: string
+  old_values: Record<string, any>
+  new_values: Record<string, any>
+  message_id?: string | null
+  changed_by?: string | null
+  created_at: string
+}
+
+export type StudentApplicationStatus = 'interested' | 'applied' | 'skipped'
+
+export interface StudentApplication {
+  user_id: string
+  opportunity_id: string
+  status: StudentApplicationStatus
+  updated_at?: string
 }
 
 export interface IngestBatch {

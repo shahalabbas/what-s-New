@@ -38,6 +38,8 @@ export const DEFAULT_ALLOWED_COHORTS: AllowedCohort[] = [
 
 export const DEFAULT_ADMIN_EMAILS: string[] = [
   'shahalabbasv.dem2026@iimu.ac.in',
+  'shahalabbas.dem2026@iimu.ac.in',
+  'admin@iimu.ac.in',
 ]
 
 /**

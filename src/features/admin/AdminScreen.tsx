@@ -17,7 +17,6 @@ import type {
   ClassSession,
   CampusEvent,
   IngestBatch,
-  IngestItem,
   EventType,
   DiffItem,
   FlatTimetableParseResult,
@@ -37,35 +36,36 @@ import {
   generateBlankMessMenuTemplate,
   exportLiveMessMenuToExcel,
 } from '../../lib/flatMessMenuImporter'
-import { parseEmailContent } from '../../lib/emailParser'
-import { formatIST, dayOffsetIST, todayIST } from '../../lib/timeUtils'
+import {
+  formatIST,
+  todayIST,
+  fromDatetimeLocalToIST,
+} from '../../lib/timeUtils'
+import { PlacementsAdmin } from './PlacementsAdmin'
+import { ProjectsAdmin } from './ProjectsAdmin'
 
-type AdminTab = 'inbox' | 'timetable' | 'mess' | 'batches' | 'events' | 'courses' | 'projects'
+type AdminTab = 'placements' | 'projects' | 'timetable' | 'mess' | 'batches' | 'events' | 'courses'
 
 export function AdminScreen() {
-  const [tab, setTab] = useState<AdminTab>('inbox')
+  const [tab, setTab] = useState<AdminTab>('placements')
   const [courses, setCourses] = useState<Course[]>(MOCK_COURSES)
-  const [itemsCount, setItemsCount] = useState(1)
 
   useEffect(() => {
     if (isConfiguredSupabase) {
       supabase.from('courses').select('*').order('code').then(({ data }) => {
         if (data && data.length > 0) setCourses(data)
       })
-      supabase.from('ingest_items').select('id', { count: 'exact' }).eq('status', 'pending').then(({ count }) => {
-        if (count !== null) setItemsCount(count)
-      })
     }
   }, [])
 
-  const tabs: { key: AdminTab; label: string; emoji: string; badge?: number }[] = [
-    { key: 'inbox', label: 'Inbox', emoji: '📥', badge: itemsCount > 0 ? itemsCount : undefined },
+  const tabs: { key: AdminTab; label: string; emoji: string }[] = [
+    { key: 'placements', label: 'Placements', emoji: '💼' },
+    { key: 'projects', label: 'Projects', emoji: '📁' },
     { key: 'timetable', label: 'Timetable', emoji: '📅' },
     { key: 'mess', label: 'Mess Menu', emoji: '🍽' },
     { key: 'batches', label: 'Rollback', emoji: '🔄' },
     { key: 'events', label: 'Events', emoji: '📣' },
     { key: 'courses', label: 'Courses', emoji: '📚' },
-    { key: 'projects', label: 'Projects', emoji: '📁' },
   ]
 
   return (
@@ -98,13 +98,6 @@ export function AdminScreen() {
             >
               <span>{t.emoji}</span>
               {t.label}
-              {t.badge !== undefined && t.badge > 0 && (
-                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
-                  tab === t.key ? 'bg-white text-accent' : 'bg-accent text-white'
-                }`}>
-                  {t.badge}
-                </span>
-              )}
             </motion.button>
           ))}
         </div>
@@ -112,540 +105,14 @@ export function AdminScreen() {
 
       {/* Main Content Area */}
       <div className="px-4 py-4 max-w-3xl mx-auto">
-        {tab === 'inbox' && <InboxAdmin courses={courses} onCountChange={setItemsCount} />}
+        {tab === 'placements' && <PlacementsAdmin />}
+        {tab === 'projects' && <ProjectsAdmin courses={courses} />}
         {tab === 'timetable' && <TimetableIngestAdmin courses={courses} />}
         {tab === 'mess' && <MessIngestAdmin />}
         {tab === 'batches' && <BatchesHistoryAdmin />}
         {tab === 'events' && <EventsAdmin />}
         {tab === 'courses' && <CoursesAdmin courses={courses} onCoursesUpdated={setCourses} />}
-        {tab === 'projects' && <ProjectsAdmin courses={courses} />}
       </div>
-    </div>
-  )
-}
-
-// ═════════════════════════════════════════════════════════════════════════════
-// 1. INBOX ADMIN (Email Ingestion Review & Rule-Based Prefill)
-// ═════════════════════════════════════════════════════════════════════════════
-
-function InboxAdmin({
-  courses,
-  onCountChange,
-}: {
-  courses: Course[]
-  onCountChange: (count: number) => void
-}) {
-  const [items, setItems] = useState<IngestItem[]>([])
-  const [selectedItem, setSelectedItem] = useState<IngestItem | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [pasteText, setPasteText] = useState('')
-  const [showPasteModal, setShowPasteModal] = useState(false)
-  const [processing, setProcessing] = useState(false)
-  const [statusMsg, setStatusMsg] = useState<string | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-
-  const fetchItems = useCallback(async () => {
-    if (!isConfiguredSupabase) {
-      setItems([])
-      return
-    }
-    setLoading(true)
-    const { data } = await supabase
-      .from('ingest_items')
-      .select('*')
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false })
-    if (data) {
-      setItems(data)
-      onCountChange(data.length)
-    }
-    setLoading(false)
-  }, [onCountChange])
-
-  useEffect(() => {
-    fetchItems()
-  }, [fetchItems])
-
-  async function handleEmlUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const text = await file.text()
-    await ingestRawText(text, { fileName: file.name, source: 'upload' })
-    if (fileInputRef.current) fileInputRef.current.value = ''
-  }
-
-  async function handlePasteEmail() {
-    if (!pasteText.trim()) return
-    await ingestRawText(pasteText, { source: 'paste' })
-    setPasteText('')
-    setShowPasteModal(false)
-  }
-
-  async function ingestRawText(rawText: string, meta: any) {
-    setProcessing(true)
-    setStatusMsg(null)
-    try {
-      const parsed = parseEmailContent(rawText, courses)
-      if (isConfiguredSupabase) {
-        const { data: batch, error: bErr } = await supabase
-          .from('ingest_batches')
-          .insert({
-            kind: 'email',
-            source: meta.source || 'paste',
-            status: 'pending_review',
-            summary: { prefilledType: parsed.itemType, title: parsed.title },
-          })
-          .select()
-          .single()
-        if (bErr) throw bErr
-
-        const { data: item, error: iErr } = await supabase
-          .from('ingest_items')
-          .insert({
-            batch_id: batch.id,
-            raw_text: rawText,
-            raw_meta: meta,
-            prefill: parsed,
-            item_type: parsed.itemType,
-            status: 'pending',
-          })
-          .select()
-          .single()
-        if (iErr) throw iErr
-
-        await fetchItems()
-        setSelectedItem(item)
-      } else {
-        const dummyItem: IngestItem = {
-          id: `item-${Date.now()}`,
-          batch_id: `batch-${Date.now()}`,
-          message_id: null,
-          raw_text: rawText,
-          raw_meta: meta,
-          prefill: parsed,
-          item_type: parsed.itemType,
-          status: 'pending',
-          error: null,
-          created_at: new Date().toISOString(),
-        }
-        setItems([dummyItem, ...items])
-        setSelectedItem(dummyItem)
-      }
-      setStatusMsg('✅ Email parsed! Review extracted details below.')
-    } catch (err: any) {
-      setStatusMsg(`Error: ${err.message}`)
-    } finally {
-      setProcessing(false)
-    }
-  }
-
-  async function approveAndCreate(item: IngestItem, formData: any) {
-    setProcessing(true)
-    try {
-      if (isConfiguredSupabase) {
-        if (formData.item_type === 'assignment' || formData.item_type === 'project') {
-          const { error } = await supabase.from('projects').insert({
-            title: formData.title,
-            description: formData.description,
-            type: formData.item_type === 'assignment' ? 'assignment' : 'project',
-            course_id: formData.course_id || null,
-            deadline: formData.deadline,
-            submission_link: formData.submission_link || null,
-            group_size: formData.group_size || 1,
-            source_item_id: item.id,
-          })
-          if (error) throw error
-        } else {
-          const { error } = await supabase.from('events').insert({
-            type: formData.item_type,
-            title: formData.title,
-            description: formData.description,
-            start_at: formData.start_at,
-            end_at: formData.end_at || null,
-            venue: formData.venue || null,
-            link: formData.submission_link || null,
-            company: formData.company || null,
-            source_item_id: item.id,
-          })
-          if (error) throw error
-        }
-
-        await supabase
-          .from('ingest_items')
-          .update({ status: 'approved' })
-          .eq('id', item.id)
-
-        await fetchItems()
-      } else {
-        setItems(items.filter((i) => i.id !== item.id))
-      }
-      setSelectedItem(null)
-      setStatusMsg('✅ Successfully approved and published to students!')
-    } catch (err: any) {
-      setStatusMsg(`Error: ${err.message}`)
-    } finally {
-      setProcessing(false)
-    }
-  }
-
-  async function rejectItem(itemId: string) {
-    if (isConfiguredSupabase) {
-      await supabase
-        .from('ingest_items')
-        .update({ status: 'rejected' })
-        .eq('id', itemId)
-      await fetchItems()
-    } else {
-      setItems(items.filter((i) => i.id !== itemId))
-    }
-    setSelectedItem(null)
-  }
-
-  return (
-    <div className="space-y-4">
-      {/* Top action bar */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-base font-bold text-primary-text">Ingestion Inbox</h2>
-          <p className="text-xs text-secondary-text">Pending emails and notices staged for admin review</p>
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="px-3 py-1.5 bg-surface text-secondary-text border border-border rounded-xl text-xs font-semibold hover:text-primary-text flex items-center gap-1.5"
-          >
-            <span>📄</span> Upload .eml
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".eml,.txt"
-            onChange={handleEmlUpload}
-            className="hidden"
-          />
-          <button
-            onClick={() => setShowPasteModal(true)}
-            className="px-3 py-1.5 bg-accent text-white rounded-xl text-xs font-semibold shadow-sm hover:opacity-95 flex items-center gap-1.5"
-          >
-            <span>📋</span> Paste Email
-          </button>
-        </div>
-      </div>
-
-      {statusMsg && (
-        <div className={`p-3 rounded-2xl text-xs font-semibold ${
-          statusMsg.startsWith('✅') ? 'bg-live/10 text-live border border-live/20' : 'bg-danger/10 text-danger'
-        }`}>
-          {statusMsg}
-        </div>
-      )}
-
-      {/* Items list */}
-      {loading ? (
-        <div className="p-8 text-center text-xs text-secondary-text">Loading inbox...</div>
-      ) : items.length === 0 ? (
-        <div className="bg-white rounded-3xl p-8 text-center shadow-card border border-border space-y-2">
-          <span className="text-3xl">📭</span>
-          <h3 className="text-sm font-bold text-primary-text">Inbox is clear</h3>
-          <p className="text-xs text-secondary-text max-w-sm mx-auto">
-            No pending emails or announcements. Upload a .eml file, paste an email, or use the Gmail Apps Script to ingest notices.
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-2.5">
-          {items.map((item) => {
-            const pre = item.prefill || {}
-            return (
-              <motion.div
-                key={item.id}
-                whileTap={{ scale: 0.99 }}
-                onClick={() => setSelectedItem(item)}
-                className="bg-white rounded-2xl p-4 shadow-card border border-border hover:border-accent/40 cursor-pointer transition-all space-y-2"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-accent/10 text-accent">
-                        {item.item_type}
-                      </span>
-                      {pre.courseCode && (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-surface text-secondary-text font-mono">
-                          {pre.courseCode}
-                        </span>
-                      )}
-                      <span className="text-[11px] text-secondary-text">
-                        {item.created_at ? formatIST(new Date(item.created_at), 'dd MMM, HH:mm') : ''}
-                      </span>
-                    </div>
-                    <h3 className="text-sm font-semibold text-primary-text mt-1 truncate">
-                      {pre.title || item.raw_meta?.subject || 'Campus Email'}
-                    </h3>
-                  </div>
-                  <button className="px-3 py-1 bg-accent text-white rounded-lg text-xs font-semibold">
-                    Review
-                  </button>
-                </div>
-                <p className="text-xs text-secondary-text line-clamp-2">
-                  {item.raw_text}
-                </p>
-              </motion.div>
-            )
-          })}
-        </div>
-      )}
-
-      {/* Paste Email Modal */}
-      <AnimatePresence>
-        {showPasteModal && (
-          <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white rounded-3xl p-5 max-w-lg w-full shadow-modal space-y-4 max-h-[90vh] overflow-y-auto"
-            >
-              <div className="flex items-center justify-between border-b border-border pb-2">
-                <h3 className="text-base font-bold text-primary-text">Paste Campus Email</h3>
-                <button onClick={() => setShowPasteModal(false)} className="text-secondary-text hover:text-primary-text text-sm">✕</button>
-              </div>
-              <p className="text-xs text-secondary-text">
-                Paste an email text or upload a .eml file. Our rule-based parser will automatically extract dates, venues, links, and classify the item.
-              </p>
-              <textarea
-                value={pasteText}
-                onChange={(e) => setPasteText(e.target.value)}
-                placeholder="Subject: AA-II Assignment 1&#10;From: debanjan.mitra@iimu.ac.in&#10;&#10;Dear students, please submit by 16th Nov 11:59 PM..."
-                className="input min-h-[180px] text-xs font-mono resize-none"
-              />
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setShowPasteModal(false)}
-                  className="flex-1 py-2.5 bg-surface text-secondary-text rounded-xl text-xs font-semibold"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handlePasteEmail}
-                  disabled={!pasteText.trim()}
-                  className="flex-1 py-2.5 bg-accent text-white rounded-xl text-xs font-semibold disabled:opacity-50"
-                >
-                  Parse & Stage for Review
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* Review & Approve Item Modal */}
-      <AnimatePresence>
-        {selectedItem && (
-          <ItemReviewModal
-            item={selectedItem}
-            courses={courses}
-            processing={processing}
-            onApprove={(formData) => approveAndCreate(selectedItem, formData)}
-            onReject={() => rejectItem(selectedItem.id)}
-            onClose={() => setSelectedItem(null)}
-          />
-        )}
-      </AnimatePresence>
-    </div>
-  )
-}
-
-function ItemReviewModal({
-  item,
-  courses,
-  processing,
-  onApprove,
-  onReject,
-  onClose,
-}: {
-  item: IngestItem
-  courses: Course[]
-  processing: boolean
-  onApprove: (data: any) => void
-  onReject: () => void
-  onClose: () => void
-}) {
-  const parsed = parseEmailContent(item.raw_text, courses)
-  const [form, setForm] = useState({
-    item_type: parsed.itemType,
-    title: parsed.title,
-    description: parsed.description,
-    course_id: parsed.courseId || '',
-    deadline: parsed.deadline ? parsed.deadline.slice(0, 16) : `${dayOffsetIST(3)}T23:59`,
-    start_at: parsed.startAt ? parsed.startAt.slice(0, 16) : `${dayOffsetIST(1)}T18:00`,
-    end_at: parsed.endAt ? parsed.endAt.slice(0, 16) : '',
-    venue: parsed.venue || '',
-    submission_link: parsed.link || '',
-    company: parsed.company || '',
-    group_size: parsed.groupSize || 1,
-  })
-
-  return (
-    <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
-      <motion.div
-        initial={{ scale: 0.95, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.95, opacity: 0 }}
-        className="bg-white rounded-3xl p-5 max-w-lg w-full shadow-modal space-y-4 max-h-[90vh] overflow-y-auto"
-      >
-        <div className="flex items-center justify-between border-b border-border pb-2">
-          <div className="flex items-center gap-2">
-            <span className="text-xl">🔍</span>
-            <h3 className="text-base font-bold text-primary-text">Review Prefilled Item</h3>
-          </div>
-          <button onClick={onClose} className="text-secondary-text hover:text-primary-text text-sm">✕</button>
-        </div>
-
-        {/* Form fields */}
-        <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <AdminField label="Item Type">
-              <select
-                className="input"
-                value={form.item_type}
-                onChange={(e) => setForm({ ...form, item_type: e.target.value as any })}
-              >
-                <option value="assignment">Assignment</option>
-                <option value="project">Project</option>
-                <option value="placement_event">Placement PPT</option>
-                <option value="meeting">Meeting / Club</option>
-                <option value="notice">General Notice</option>
-              </select>
-            </AdminField>
-
-            <AdminField label="Associated Course">
-              <select
-                className="input"
-                value={form.course_id}
-                onChange={(e) => setForm({ ...form, course_id: e.target.value })}
-              >
-                <option value="">None / Campus Wide</option>
-                {courses.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.code} — {c.name}
-                  </option>
-                ))}
-              </select>
-            </AdminField>
-          </div>
-
-          <AdminField label="Title">
-            <input
-              type="text"
-              className="input"
-              value={form.title}
-              onChange={(e) => setForm({ ...form, title: e.target.value })}
-            />
-          </AdminField>
-
-          {form.item_type === 'assignment' || form.item_type === 'project' ? (
-            <>
-              <div className="grid grid-cols-2 gap-3">
-                <AdminField label="Deadline (IST)">
-                  <input
-                    type="datetime-local"
-                    className="input"
-                    value={form.deadline}
-                    onChange={(e) => setForm({ ...form, deadline: e.target.value })}
-                  />
-                </AdminField>
-                <AdminField label="Group Size">
-                  <input
-                    type="number"
-                    min="1"
-                    max="10"
-                    className="input"
-                    value={form.group_size}
-                    onChange={(e) => setForm({ ...form, group_size: parseInt(e.target.value) || 1 })}
-                  />
-                </AdminField>
-              </div>
-
-              <AdminField label="Submission Link">
-                <input
-                  type="url"
-                  placeholder="https://..."
-                  className="input"
-                  value={form.submission_link}
-                  onChange={(e) => setForm({ ...form, submission_link: e.target.value })}
-                />
-              </AdminField>
-            </>
-          ) : (
-            <>
-              <div className="grid grid-cols-2 gap-3">
-                <AdminField label="Start Time (IST)">
-                  <input
-                    type="datetime-local"
-                    className="input"
-                    value={form.start_at}
-                    onChange={(e) => setForm({ ...form, start_at: e.target.value })}
-                  />
-                </AdminField>
-                <AdminField label="End Time (Optional)">
-                  <input
-                    type="datetime-local"
-                    className="input"
-                    value={form.end_at}
-                    onChange={(e) => setForm({ ...form, end_at: e.target.value })}
-                  />
-                </AdminField>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <AdminField label="Venue">
-                  <input
-                    type="text"
-                    placeholder="Auditorium, CR-7C-15, etc."
-                    className="input"
-                    value={form.venue}
-                    onChange={(e) => setForm({ ...form, venue: e.target.value })}
-                  />
-                </AdminField>
-                <AdminField label="Recruiter / Org (Optional)">
-                  <input
-                    type="text"
-                    placeholder="McKinsey, PlaceCom, etc."
-                    className="input"
-                    value={form.company}
-                    onChange={(e) => setForm({ ...form, company: e.target.value })}
-                  />
-                </AdminField>
-              </div>
-            </>
-          )}
-
-          <AdminField label="Description / Raw Body">
-            <textarea
-              className="input min-h-[80px] text-xs resize-none"
-              value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
-            />
-          </AdminField>
-        </div>
-
-        {/* Buttons */}
-        <div className="flex gap-2 pt-2 border-t border-border">
-          <button
-            onClick={onReject}
-            disabled={processing}
-            className="px-4 py-2.5 bg-danger/10 text-danger rounded-xl text-xs font-semibold hover:bg-danger/15"
-          >
-            Reject
-          </button>
-          <button
-            onClick={() => onApprove(form)}
-            disabled={processing || !form.title}
-            className="flex-1 py-2.5 bg-accent text-white rounded-xl text-xs font-semibold shadow-sm hover:opacity-95 disabled:opacity-50"
-          >
-            {processing ? 'Publishing...' : 'Approve & Publish to Students'}
-          </button>
-        </div>
-      </motion.div>
     </div>
   )
 }
@@ -1208,96 +675,85 @@ function MessIngestAdmin() {
 
         // 2. Upsert mess_weeks
         for (const w of parseResult.mess_weeks) {
-          const { error: wErr } = await supabase
-            .from('mess_weeks')
-            .upsert({
+          const { error: wErr } = await supabase.from('mess_weeks').upsert(
+            {
               week_key: w.week_key,
               week_start: w.week_start,
               week_end: w.week_end,
               title: w.title,
               source_batch_id: batch?.id,
-            }, { onConflict: 'week_key' })
+            },
+            { onConflict: 'week_key' }
+          )
           if (wErr) throw wErr
         }
 
-        // Fetch week UUIDs
-        const { data: weeksData } = await supabase
-          .from('mess_weeks')
-          .select('id, week_key')
-          .in('week_key', parseResult.mess_weeks.map(w => w.week_key))
-
-        const weekKeyToId = new Map<string, string>()
-        weeksData?.forEach(w => weekKeyToId.set(w.week_key, w.id))
+        // Fetch fresh week ID mapping
+        const { data: dbWeeks } = await supabase.from('mess_weeks').select('id, week_key')
+        const weekIdByKey = new Map<string, string>()
+        dbWeeks?.forEach((w) => weekIdByKey.set(w.week_key, w.id))
 
         // 3. Upsert mess_meal_timings
-        if (parseResult.mess_meal_timings.length > 0) {
-          const timingRows = parseResult.mess_meal_timings.map(t => ({
-            meal: t.meal,
-            label: t.label,
-            applies_to: t.applies_to,
-            start_time: t.start_time,
-            end_time: t.end_time,
-            effective_from: t.effective_from,
-          }))
-          const { error: tErr } = await supabase
-            .from('mess_meal_timings')
-            .upsert(timingRows, { onConflict: 'meal,applies_to,effective_from' })
-          if (tErr) throw tErr
+        for (const t of parseResult.mess_meal_timings) {
+          await supabase.from('mess_meal_timings').upsert(
+            {
+              meal: t.meal,
+              label: t.label,
+              applies_to: t.applies_to,
+              start_time: t.start_time,
+              end_time: t.end_time,
+              effective_from: t.effective_from,
+            },
+            { onConflict: 'meal' }
+          )
         }
 
-        // 4. Delete existing items for these dates/weeks and upsert new ones
-        const dates = Array.from(new Set(parseResult.mess_menu_items.map(i => i.date)))
-        if (dates.length > 0) {
-          await supabase.from('mess_menu_items').delete().in('date', dates)
+        // 4. Delete previous items for these weeks and insert new ones
+        const affectedWeekIds = Array.from(weekIdByKey.values())
+        if (affectedWeekIds.length > 0) {
+          await supabase.from('mess_menu_items').delete().in('week_id', affectedWeekIds)
         }
 
-        const itemRows = parseResult.mess_menu_items.map(i => ({
-          week_id: weekKeyToId.get(i.week_key!) || null,
+        const itemRows = parseResult.mess_menu_items.map((i) => ({
+          week_id: (i.week_key ? weekIdByKey.get(i.week_key) : undefined) || i.week_id || null,
           date: i.date,
           meal: i.meal,
           position: i.position,
           item_raw: i.item_raw,
           item_display: i.item_display,
-          category: i.category,
           diet: i.diet,
           is_special: i.is_special,
-          note: i.note,
           source_batch_id: batch?.id,
         }))
 
-        // Upsert items in chunks of 100 to avoid payload limits & prevent duplicate key violations
-        for (let idx = 0; idx < itemRows.length; idx += 100) {
-          const chunk = itemRows.slice(idx, idx + 100)
-          const { error: iErr } = await supabase
-            .from('mess_menu_items')
-            .upsert(chunk, { onConflict: 'date,meal,position' })
-          if (iErr) throw iErr
-        }
+        const { error: itErr } = await supabase.from('mess_menu_items').insert(itemRows)
+        if (itErr) throw itErr
 
-        // 5. Mark batch as applied
+        // 5. Update batch status
         if (batch?.id) {
-          await supabase.from('ingest_batches').update({ status: 'applied', applied_at: new Date().toISOString() }).eq('id', batch.id)
+          await supabase
+            .from('ingest_batches')
+            .update({ status: 'applied', applied_at: new Date().toISOString() })
+            .eq('id', batch.id)
         }
       }
 
-      // Always update local cache & in-memory records
+      // Sync in-memory and local storage
       MOCK_MESS_WEEKS.splice(0, MOCK_MESS_WEEKS.length, ...parseResult.mess_weeks)
       MOCK_MESS_MENU_ITEMS.splice(0, MOCK_MESS_MENU_ITEMS.length, ...parseResult.mess_menu_items)
-      if (parseResult.mess_meal_timings.length > 0) {
-        MOCK_MESS_MEAL_TIMINGS.splice(0, MOCK_MESS_MEAL_TIMINGS.length, ...parseResult.mess_meal_timings)
-      }
+      MOCK_MESS_MEAL_TIMINGS.splice(0, MOCK_MESS_MEAL_TIMINGS.length, ...parseResult.mess_meal_timings)
 
       localStorage.setItem('whats_next_mess_weeks', JSON.stringify(parseResult.mess_weeks))
-      localStorage.setItem('whats_next_mess_items', JSON.stringify(parseResult.mess_menu_items))
-      localStorage.setItem('whats_next_mess_timings', JSON.stringify(parseResult.mess_meal_timings))
+      localStorage.setItem('whats_next_mess_menu_items', JSON.stringify(parseResult.mess_menu_items))
+      localStorage.setItem('whats_next_mess_meal_timings', JSON.stringify(parseResult.mess_meal_timings))
 
       window.dispatchEvent(new Event('mess_updated'))
 
-      const msg = `✅ Successfully applied mess menu! ${parseResult.mess_menu_items.length} dishes active.`
+      const msg = `✅ Successfully applied mess menu! ${parseResult.mess_menu_items.length} dishes published.`
       setStatusMsg(msg)
       toast.success(msg)
     } catch (err: any) {
-      const errMsg = `Error applying mess menu: ${err.message}`
+      const errMsg = `Error applying mess batch: ${err.message}`
       setStatusMsg(errMsg)
       toast.error(errMsg)
     } finally {
@@ -1307,11 +763,13 @@ function MessIngestAdmin() {
 
   function downloadTemplate() {
     const bytes = generateBlankMessMenuTemplate()
-    const blob = new Blob([bytes.buffer as ArrayBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const blob = new Blob([bytes.buffer as ArrayBuffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = 'Mess_Menu_Template.xlsx'
+    a.download = 'IIMU_Mess_Menu_Template.xlsx'
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -1322,29 +780,25 @@ function MessIngestAdmin() {
     const timings = parseResult?.mess_meal_timings || MOCK_MESS_MEAL_TIMINGS
 
     const bytes = exportLiveMessMenuToExcel(weeks, items, timings)
-    const blob = new Blob([bytes.buffer as ArrayBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const blob = new Blob([bytes.buffer as ArrayBuffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = 'Mess_Menu_Live_Export.xlsx'
+    a.download = 'IIMU_Live_Mess_Menu_Export.xlsx'
     a.click()
     URL.revokeObjectURL(url)
   }
-
-  const nonVegEggTotal = parseResult
-    ? parseResult.mess_menu_items.filter(i => i.diet === 'non_veg' || i.diet === 'egg').length
-    : 0
-
-  const specialsTotal = parseResult
-    ? parseResult.mess_menu_items.filter(i => i.is_special).length
-    : 0
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-base font-bold text-primary-text">Mess Menu Ingestion</h2>
-          <p className="text-xs text-secondary-text">Flat Excel importer (mess_weeks, mess_menu_items, mess_meal_timings)</p>
+          <p className="text-xs text-secondary-text">
+            Flat Excel importer (mess_weeks, mess_menu_items, meal timings)
+          </p>
         </div>
         <div className="flex gap-2">
           <button
@@ -1363,14 +817,18 @@ function MessIngestAdmin() {
       </div>
 
       {statusMsg && (
-        <div className={`p-3 rounded-2xl text-xs font-semibold ${
-          statusMsg.startsWith('✅') ? 'bg-live/10 text-live border border-live/20' : 'bg-danger/10 text-danger'
-        }`}>
+        <div
+          className={`p-3 rounded-2xl text-xs font-semibold ${
+            statusMsg.startsWith('✅')
+              ? 'bg-live/10 text-live border border-live/20'
+              : 'bg-danger/10 text-danger'
+          }`}
+        >
           {statusMsg}
         </div>
       )}
 
-      {/* Upload Zone */}
+      {/* Upload Box */}
       <div
         onClick={() => fileInputRef.current?.click()}
         className="bg-white rounded-2xl border-2 border-dashed border-border hover:border-accent/40 p-6 text-center cursor-pointer transition-colors space-y-2"
@@ -1384,60 +842,64 @@ function MessIngestAdmin() {
         />
         <span className="text-3xl">🍽</span>
         <h3 className="text-sm font-semibold text-primary-text">
-          {file ? file.name : 'Click to select Flat Mess Menu Excel (.xlsx)'}
+          {file ? file.name : 'Click to select Mess Menu Excel (.xlsx)'}
         </h3>
         <p className="text-xs text-secondary-text">
-          Sheets: mess_weeks (week_key, start, end, title), mess_menu_items (date, meal, pos, item_display, diet, special), mess_meal_timings
+          Automatic diet tagging (veg, non-veg, egg), spelling fix & audit verification
         </p>
       </div>
 
       {/* Parsed Result & Audit Card */}
       {parseResult && (
         <div className="bg-white rounded-3xl p-5 shadow-card border border-border space-y-4">
-          {/* Week Header */}
+          {/* Week Info Header */}
           {parseResult.mess_weeks.length > 0 && (
-            <div className="flex items-start justify-between border-b border-border pb-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-accent bg-accent/10 px-2.5 py-0.5 rounded-full uppercase">
-                    {parseResult.mess_weeks[0].week_key}
-                  </span>
-                  <span className="text-xs font-semibold text-secondary-text">
-                    {parseResult.mess_weeks[0].title || 'Campus Mess Menu'}
-                  </span>
-                </div>
-                <h3 className="text-base font-bold text-primary-text mt-1">
-                  Week: {parseResult.mess_weeks[0].week_start} to {parseResult.mess_weeks[0].week_end}
-                </h3>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-accent bg-accent/10 px-2.5 py-0.5 rounded-full uppercase">
+                  Week: {parseResult.mess_weeks[0].week_key}
+                </span>
+                <span className="text-xs font-semibold text-secondary-text">
+                  📅 {parseResult.mess_weeks[0].week_start} to {parseResult.mess_weeks[0].week_end}
+                </span>
               </div>
+              <h3 className="text-base font-bold text-primary-text mt-1">
+                {parseResult.mess_weeks[0].title}
+              </h3>
             </div>
           )}
 
           {/* Breakdown Badges */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
             <div className="bg-surface p-2.5 rounded-xl">
-              <p className="text-[11px] text-secondary-text font-medium">Total Items</p>
+              <p className="text-[11px] text-secondary-text font-medium">Total Dishes</p>
               <p className="text-sm font-bold text-primary-text">{parseResult.mess_menu_items.length}</p>
             </div>
             <div className="bg-surface p-2.5 rounded-xl">
+              <p className="text-[11px] text-secondary-text font-medium">Pure Veg</p>
+              <p className="text-sm font-bold text-emerald-600">
+                {parseResult.mess_menu_items.filter((i) => i.diet === 'veg').length}
+              </p>
+            </div>
+            <div className="bg-surface p-2.5 rounded-xl">
               <p className="text-[11px] text-secondary-text font-medium">Non-Veg / Egg</p>
-              <p className="text-sm font-bold text-rose-600">{nonVegEggTotal}</p>
+              <p className="text-sm font-bold text-rose-600">
+                {parseResult.mess_menu_items.filter((i) => i.diet === 'non_veg' || i.diet === 'egg').length}
+              </p>
             </div>
             <div className="bg-surface p-2.5 rounded-xl">
-              <p className="text-[11px] text-secondary-text font-medium">Specials ⭐</p>
-              <p className="text-sm font-bold text-amber-600">{specialsTotal}</p>
-            </div>
-            <div className="bg-surface p-2.5 rounded-xl">
-              <p className="text-[11px] text-secondary-text font-medium">Meal Timings</p>
-              <p className="text-sm font-bold text-accent">{parseResult.mess_meal_timings.length}</p>
+              <p className="text-[11px] text-secondary-text font-medium">Specials (⭐)</p>
+              <p className="text-sm font-bold text-amber-600">
+                {parseResult.mess_menu_items.filter((i) => i.is_special).length}
+              </p>
             </div>
           </div>
 
-          {/* Day Summary Audit Table */}
+          {/* Daily Meal Breakdown Audit Table */}
           {parseResult.auditSummary.length > 0 && (
             <div className="space-y-2 pt-2">
               <h4 className="text-xs font-bold text-primary-text uppercase tracking-wider">
-                Day-by-Day Menu Breakdown
+                Daily Meal Breakdown Audit
               </h4>
               <div className="overflow-x-auto border border-border rounded-xl">
                 <table className="w-full text-xs text-left">
@@ -1450,8 +912,8 @@ function MessIngestAdmin() {
                       <th className="px-3 py-2 text-center">Hi-Tea</th>
                       <th className="px-3 py-2 text-center">Dinner</th>
                       <th className="px-3 py-2 text-center">Total</th>
-                      <th className="px-3 py-2 text-center">Non-Veg/Egg</th>
-                      <th className="px-3 py-2 text-center">Special</th>
+                      <th className="px-3 py-2 text-center text-rose-600">Non-Veg</th>
+                      <th className="px-3 py-2 text-center text-amber-600">Specials</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
@@ -1763,98 +1225,175 @@ function BatchesHistoryAdmin() {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// 5. EVENTS ADMIN
+// 5. EVENTS & INTERVIEWS ADMIN
 // ═════════════════════════════════════════════════════════════════════════════
 
 function EventsAdmin() {
   const [events, setEvents] = useState<CampusEvent[]>(MOCK_EVENTS)
   const [showAddModal, setShowAddModal] = useState(false)
+  const [processing, setProcessing] = useState(false)
+  const [statusMsg, setStatusMsg] = useState<string | null>(null)
   const [form, setForm] = useState<{
     type: EventType
     title: string
-    date: string
-    start_time: string
-    end_time: string
-    all_day: boolean
+    company: string
+    start_at: string
+    end_at: string
     venue: string
     description: string
   }>({
-    type: 'campus_event',
+    type: 'placement',
     title: '',
-    date: todayIST(),
-    start_time: '18:00',
-    end_time: '19:30',
-    all_day: false,
-    venue: 'Auditorium',
+    company: '',
+    start_at: `${todayIST()}T18:00`,
+    end_at: `${todayIST()}T19:30`,
+    venue: 'Auditorium / Online',
     description: '',
   })
 
-  useEffect(() => {
+  const fetchEvents = useCallback(async () => {
     if (isConfiguredSupabase) {
-      supabase.from('events').select('*').order('date', { ascending: true }).then(({ data }) => {
-        if (data && data.length > 0) setEvents(data)
-      })
+      const { data } = await supabase.from('events').select('*').order('start_at', { ascending: true })
+      if (data && data.length > 0) setEvents(data)
     }
   }, [])
 
+  useEffect(() => {
+    fetchEvents()
+  }, [fetchEvents])
+
   async function createEvent() {
-    if (!form.title) return
-    const newEvent: Partial<CampusEvent> = {
-      type: form.type,
-      title: form.title,
-      date: form.date,
-      start_time: form.all_day ? null : form.start_time,
-      end_time: form.all_day ? null : form.end_time,
-      start_at: form.all_day ? null : `${form.date}T${form.start_time}:00+05:30`,
-      end_at: form.all_day ? null : `${form.date}T${form.end_time}:00+05:30`,
-      all_day: form.all_day,
-      venue: form.venue || null,
-      description: form.description || null,
-      status: 'scheduled',
-      program: 'dem',
-      batch_year: 2026,
-    }
+    if (!form.title && !form.company) return
+    setProcessing(true)
+    setStatusMsg(null)
+    try {
+      const startIso = fromDatetimeLocalToIST(form.start_at) || new Date().toISOString()
+      const endIso = fromDatetimeLocalToIST(form.end_at)
+      const dateStr = startIso.slice(0, 10)
 
-    if (isConfiguredSupabase) {
-      const { data, error } = await supabase.from('events').insert(newEvent).select().single()
-      if (!error && data) setEvents([...events, data])
-    } else {
-      setEvents([...events, { ...newEvent, id: `ev-${Date.now()}` } as CampusEvent])
-    }
+      const newEvent: Partial<CampusEvent> = {
+        type: form.type,
+        title: form.title || `${form.company} Session`,
+        company: form.company || null,
+        date: dateStr,
+        start_at: startIso,
+        end_at: endIso || null,
+        start_time: form.start_at ? form.start_at.slice(11, 16) : null,
+        end_time: form.end_at ? form.end_at.slice(11, 16) : null,
+        all_day: false,
+        venue: form.venue || null,
+        description: form.description || null,
+        status: 'scheduled',
+        program: 'dem',
+        batch_year: 2026,
+      }
 
-    setShowAddModal(false)
+      if (isConfiguredSupabase) {
+        const { data, error } = await supabase.from('events').insert(newEvent).select().single()
+        if (error) throw error
+        if (data) setEvents([...events, data])
+      } else {
+        setEvents([...events, { ...newEvent, id: `ev-${Date.now()}` } as CampusEvent])
+      }
+
+      setShowAddModal(false)
+      setForm({
+        type: 'placement',
+        title: '',
+        company: '',
+        start_at: `${todayIST()}T18:00`,
+        end_at: `${todayIST()}T19:30`,
+        venue: 'Auditorium / Online',
+        description: '',
+      })
+      setStatusMsg('✅ Successfully added event/interview!')
+      window.dispatchEvent(new Event('schedule_updated'))
+    } catch (err: any) {
+      setStatusMsg(`Error: ${err.message}`)
+    } finally {
+      setProcessing(false)
+    }
+  }
+
+  async function deleteEvent(id: string) {
+    if (!confirm('Are you sure you want to delete this event?')) return
+    try {
+      if (isConfiguredSupabase) {
+        await supabase.from('events').delete().eq('id', id)
+      }
+      setEvents(events.filter((e) => e.id !== id))
+      setStatusMsg('✅ Event deleted.')
+      window.dispatchEvent(new Event('schedule_updated'))
+    } catch (err: any) {
+      setStatusMsg(`Error: ${err.message}`)
+    }
   }
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-base font-bold text-primary-text">Campus Events & Notices</h2>
-          <p className="text-xs text-secondary-text">Placement talks, club meetings, exams & holidays</p>
+          <h2 className="text-base font-bold text-primary-text">Campus Events & Interviews</h2>
+          <p className="text-xs text-secondary-text">Placement drives, GD/PI rounds, talks & campus exams</p>
         </div>
         <button
           onClick={() => setShowAddModal(true)}
           className="px-3 py-1.5 bg-accent text-white rounded-xl text-xs font-semibold shadow-sm hover:opacity-95 flex items-center gap-1.5"
         >
-          <span>➕</span> New Event
+          <span>➕</span> New Interview / Event
         </button>
       </div>
 
+      {statusMsg && (
+        <div className={`p-3 rounded-2xl text-xs font-semibold ${
+          statusMsg.startsWith('✅') ? 'bg-live/10 text-live border border-live/20' : 'bg-danger/10 text-danger'
+        }`}>
+          {statusMsg}
+        </div>
+      )}
+
       <div className="space-y-2.5">
-        {events.map((ev) => (
-          <div key={ev.id} className="bg-white rounded-2xl p-4 shadow-card border border-border space-y-1">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-accent bg-accent/10 px-2.5 py-0.5 rounded-full uppercase">
-                {ev.type}
-              </span>
-              <span className="text-xs font-mono text-secondary-text">
-                {ev.date} {ev.start_time ? `(${ev.start_time.slice(0, 5)})` : '(All Day)'}
-              </span>
-            </div>
-            <h3 className="text-sm font-semibold text-primary-text mt-1">{ev.title}</h3>
-            {ev.venue && <p className="text-xs text-secondary-text">📍 {ev.venue}</p>}
+        {events.length === 0 ? (
+          <div className="bg-white rounded-3xl p-8 text-center shadow-card border border-border text-secondary-text text-xs">
+            No upcoming events or interviews scheduled.
           </div>
-        ))}
+        ) : (
+          events.map((ev) => (
+            <div key={ev.id} className="bg-white rounded-2xl p-4 shadow-card border border-border space-y-2">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-accent bg-accent/10 px-2.5 py-0.5 rounded-full uppercase">
+                      {ev.type}
+                    </span>
+                    {ev.company && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700">
+                        {ev.company}
+                      </span>
+                    )}
+                    <span className="text-xs font-mono text-secondary-text">
+                      {ev.date} {ev.start_time ? `· ${ev.start_time.slice(0, 5)}` : ''}
+                      {ev.end_time ? ` - ${ev.end_time.slice(0, 5)}` : ''}
+                    </span>
+                  </div>
+                  <h3 className="text-sm font-semibold text-primary-text mt-1.5">{ev.title}</h3>
+                  {ev.venue && <p className="text-xs text-secondary-text mt-0.5">📍 {ev.venue}</p>}
+                </div>
+                <button
+                  onClick={() => deleteEvent(ev.id)}
+                  className="px-2.5 py-1 text-danger/80 hover:text-danger text-xs font-semibold"
+                >
+                  Delete
+                </button>
+              </div>
+              {ev.description && (
+                <p className="text-xs text-secondary-text bg-surface p-2.5 rounded-xl font-mono text-[11px] leading-relaxed">
+                  {ev.description}
+                </p>
+              )}
+            </div>
+          ))
+        )}
       </div>
 
       <AnimatePresence>
@@ -1864,72 +1403,118 @@ function EventsAdmin() {
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white rounded-3xl p-5 max-w-lg w-full shadow-modal space-y-4"
+              className="bg-white rounded-3xl p-5 max-w-lg w-full shadow-modal space-y-4 max-h-[90vh] overflow-y-auto"
             >
               <div className="flex items-center justify-between border-b border-border pb-2">
-                <h3 className="text-base font-bold text-primary-text">Create Campus Event</h3>
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl">🎤</span>
+                  <div>
+                    <h3 className="text-base font-bold text-primary-text">Create Interview / Campus Event</h3>
+                    <p className="text-[11px] text-secondary-text">Add recruiter interviews, PPTs or exams</p>
+                  </div>
+                </div>
                 <button onClick={() => setShowAddModal(false)} className="text-secondary-text hover:text-primary-text text-sm">✕</button>
               </div>
 
               <div className="space-y-3">
-                <AdminField label="Event Type">
-                  <select
-                    className="input"
-                    value={form.type}
-                    onChange={(e) => setForm({ ...form, type: e.target.value as any })}
-                  >
-                    <option value="placement">Placement Talk</option>
-                    <option value="meeting">Club Meeting</option>
-                    <option value="holiday">Holiday</option>
-                    <option value="campus_event">Campus Event</option>
-                    <option value="workshop">Workshop</option>
-                    <option value="exam">Exam</option>
-                    <option value="quiz">Quiz</option>
-                  </select>
-                </AdminField>
-
-                <AdminField label="Title">
-                  <input
-                    type="text"
-                    className="input"
-                    value={form.title}
-                    onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  />
-                </AdminField>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <AdminField label="Date">
-                    <input
-                      type="date"
-                      className="input"
-                      value={form.date}
-                      onChange={(e) => setForm({ ...form, date: e.target.value })}
-                    />
-                  </AdminField>
-                  <AdminField label="Venue">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-primary-text">Company / Organization</label>
                     <input
                       type="text"
+                      placeholder="e.g. Alvarez & Marsal"
                       className="input"
-                      value={form.venue}
-                      onChange={(e) => setForm({ ...form, venue: e.target.value })}
+                      value={form.company}
+                      onChange={(e) => setForm({ ...form, company: e.target.value })}
                     />
-                  </AdminField>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-primary-text">Event / Session Title *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Technical GD & Personal Interview"
+                      className="input"
+                      value={form.title}
+                      onChange={(e) => setForm({ ...form, title: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-primary-text">Event Type</label>
+                    <select
+                      className="input text-xs"
+                      value={form.type}
+                      onChange={(e) => setForm({ ...form, type: e.target.value as any })}
+                    >
+                      <option value="placement">Placement PPT / Interview</option>
+                      <option value="workshop">Workshop</option>
+                      <option value="exam">Exam / Test</option>
+                      <option value="meeting">Club Meeting</option>
+                      <option value="campus_event">Campus Event</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-primary-text">Start Time (IST) *</label>
+                    <input
+                      type="datetime-local"
+                      required
+                      className="input text-xs"
+                      value={form.start_at}
+                      onChange={(e) => setForm({ ...form, start_at: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-primary-text">End Time (IST)</label>
+                    <input
+                      type="datetime-local"
+                      className="input text-xs"
+                      value={form.end_at}
+                      onChange={(e) => setForm({ ...form, end_at: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-primary-text">Venue / Meeting Link</label>
+                  <input
+                    type="text"
+                    placeholder="Auditorium, CR-7C, or Google Meet link..."
+                    className="input text-xs"
+                    value={form.venue}
+                    onChange={(e) => setForm({ ...form, venue: e.target.value })}
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-primary-text">Interview Rounds & Instructions (Description)</label>
+                  <textarea
+                    rows={6}
+                    placeholder="Provide details on rounds, attire, panel info, and eligibility..."
+                    className="input text-xs font-mono leading-relaxed resize-y min-h-[120px] p-3"
+                    value={form.description}
+                    onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  />
                 </div>
               </div>
 
               <div className="flex gap-2 pt-2 border-t border-border">
                 <button
+                  type="button"
                   onClick={() => setShowAddModal(false)}
                   className="flex-1 py-2.5 bg-surface text-secondary-text rounded-xl text-xs font-semibold"
                 >
                   Cancel
                 </button>
                 <button
+                  type="button"
                   onClick={createEvent}
-                  disabled={!form.title}
-                  className="flex-1 py-2.5 bg-accent text-white rounded-xl text-xs font-semibold shadow-sm hover:opacity-95 disabled:opacity-50"
+                  disabled={processing || (!form.title && !form.company)}
+                  className="flex-1 py-2.5 bg-accent text-white rounded-xl text-xs font-semibold shadow-sm hover:opacity-95 disabled:opacity-50 flex items-center justify-center gap-2"
                 >
-                  Publish Event
+                  {processing ? 'Publishing...' : 'Publish to Students'}
                 </button>
               </div>
             </motion.div>
@@ -1941,7 +1526,7 @@ function EventsAdmin() {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// 6. COURSES & 7. PROJECTS ADMIN
+// 6. COURSES ADMIN
 // ═════════════════════════════════════════════════════════════════════════════
 
 function CoursesAdmin({
@@ -1975,34 +1560,6 @@ function CoursesAdmin({
           </div>
         ))}
       </div>
-    </div>
-  )
-}
-
-function ProjectsAdmin(_props: { courses?: Course[] }) {
-  return (
-    <div className="space-y-4">
-      <div>
-        <h2 className="text-base font-bold text-primary-text">Course Deliverables</h2>
-        <p className="text-xs text-secondary-text">All active assignments and projects across subjects</p>
-      </div>
-
-      <div className="bg-white rounded-3xl p-6 shadow-card border border-border text-center space-y-2">
-        <span className="text-3xl">📁</span>
-        <h3 className="text-sm font-bold text-primary-text">Active Course Projects</h3>
-        <p className="text-xs text-secondary-text max-w-sm mx-auto">
-          Assignments and project milestones are created automatically from email notices or via the Inbox tab.
-        </p>
-      </div>
-    </div>
-  )
-}
-
-function AdminField({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="space-y-1">
-      <label className="text-xs font-semibold text-primary-text">{label}</label>
-      {children}
     </div>
   )
 }

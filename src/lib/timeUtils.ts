@@ -188,3 +188,112 @@ export function toIST(date: Date | string): Date {
 export function fromIST(date: Date): Date {
   return fromZonedTime(date, IST)
 }
+
+/**
+ * Format placement deadline for list: "Closes Fri 9 Oct, 11:59 PM"
+ */
+export function formatPlacementDeadline(iso: string): string {
+  try {
+    return formatInTimeZone(new Date(iso), IST, "'Closes' EEE d MMM, h:mm a")
+  } catch {
+    return iso
+  }
+}
+
+export interface PlacementCountdownResult {
+  formatted: string
+  urgency: 'normal' | 'warm' | 'urgent' | 'closed'
+  secondsRemaining: number
+  isUnderOneHour: boolean
+}
+
+/**
+ * Format live countdown according to specification:
+ * - >= 2 days: "2d 14h"
+ * - < 2 days: "18h 25m"
+ * - < 1 hour: "42:17" (mm:ss)
+ * - passed: "Closed"
+ * Urgency levels:
+ * - normal: >= 24h
+ * - warm: < 24h
+ * - urgent: < 3h
+ */
+export function formatPlacementCountdown(
+  deadlineAt: string | Date,
+  now: Date = new Date()
+): PlacementCountdownResult {
+  try {
+    const target = typeof deadlineAt === 'string' ? new Date(deadlineAt) : deadlineAt
+    const nowTime = now instanceof Date ? now : new Date(now)
+    const secondsRemaining = differenceInSeconds(target, nowTime)
+
+    if (secondsRemaining <= 0) {
+      return {
+        formatted: 'Closed',
+        urgency: 'closed',
+        secondsRemaining: 0,
+        isUnderOneHour: false,
+      }
+    }
+
+    if (secondsRemaining < 3600) {
+      const mins = Math.floor(secondsRemaining / 60)
+      const secs = secondsRemaining % 60
+      return {
+        formatted: `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`,
+        urgency: 'urgent',
+        secondsRemaining,
+        isUnderOneHour: true,
+      }
+    }
+
+    if (secondsRemaining < 172800) {
+      // < 2 days
+      const hours = Math.floor(secondsRemaining / 3600)
+      const mins = Math.floor((secondsRemaining % 3600) / 60)
+      return {
+        formatted: `${hours}h ${mins}m`,
+        urgency: hours < 3 ? 'urgent' : hours < 24 ? 'warm' : 'normal',
+        secondsRemaining,
+        isUnderOneHour: false,
+      }
+    }
+
+    // >= 2 days
+    const days = Math.floor(secondsRemaining / 86400)
+    const hours = Math.floor((secondsRemaining % 86400) / 3600)
+    return {
+      formatted: `${days}d ${hours}h`,
+      urgency: 'normal',
+      secondsRemaining,
+      isUnderOneHour: false,
+    }
+  } catch {
+    return {
+      formatted: 'Closed',
+      urgency: 'closed',
+      secondsRemaining: 0,
+      isUnderOneHour: false,
+    }
+  }
+}
+
+/** Format an ISO or Date string to "YYYY-MM-DDTHH:mm" in IST for datetime-local inputs */
+export function toDatetimeLocalIST(isoStr?: string | null): string {
+  if (!isoStr) return ''
+  try {
+    const d = parseISOtoIST(isoStr)
+    return formatIST(d, "yyyy-MM-dd'T'HH:mm")
+  } catch {
+    return isoStr.slice(0, 16)
+  }
+}
+
+/** Convert a datetime-local input string ("YYYY-MM-DDTHH:mm") to ISO string in IST (+05:30) */
+export function fromDatetimeLocalToIST(localStr?: string | null): string | null {
+  if (!localStr) return null
+  const trimmed = localStr.trim()
+  if (!trimmed) return null
+  if (trimmed.includes('+') || trimmed.endsWith('Z')) return trimmed
+  return `${trimmed}:00+05:30`
+}

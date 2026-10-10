@@ -195,3 +195,44 @@ export const MOCK_INGEST_ITEMS: IngestItem[] = [
     created_at: '2026-10-08T09:05:00Z',
   },
 ]
+
+import type { PlacementOpportunity, PlacementUpdate, StudentApplication } from '../types'
+
+export const MOCK_PLACEMENT_OPPORTUNITIES: PlacementOpportunity[] = [
+  {
+    id: 'opp-am-01',
+    program: 'dem',
+    batch_year: 2026,
+    source: 'superset',
+    external_job_id: '1f5e4406-fe26-4f67-aa6d-e7cdf83ef901',
+    company: 'Alvarez & Marsal (GCC)',
+    role: 'Consumer Retail Group - Senior Associate',
+    stage: 'open_for_application',
+    additional_details: [{ label: 'Job Profile Category', value: '1' }],
+    apply_url: 'https://app.joinsuperset.com/students/jobprofiles?currentJobId=1f5e4406-fe26-4f67-aa6d-e7cdf83ef901',
+    deadline_at: '2026-10-09T23:59:00+05:30',
+    application_start: '2026-10-09T01:34:04+05:30',
+    notes: 'Tier 1 Global Management Consulting opportunity',
+    created_at: '2026-10-08T20:05:00Z',
+  },
+  {
+    id: 'opp-deloitte-02',
+    program: 'dem',
+    batch_year: 2026,
+    source: 'superset',
+    external_job_id: '2a4b6c8d-9e0f-11ee-be56-0242ac120002',
+    company: 'Deloitte USI',
+    role: 'Strategy & Operations Consultant',
+    stage: 'open_for_application',
+    additional_details: [{ label: 'Job Profile Category', value: '1' }],
+    apply_url: 'https://app.joinsuperset.com/students/jobprofiles?currentJobId=2a4b6c8d-9e0f-11ee-be56-0242ac120002',
+    deadline_at: '2026-10-12T18:00:00+05:30',
+    application_start: '2026-10-07T19:30:00+05:30',
+    notes: 'Shortlist will be announced after initial screening',
+    created_at: '2026-10-07T14:10:00Z',
+  },
+]
+
+export const MOCK_STUDENT_APPLICATIONS: StudentApplication[] = []
+
+export const MOCK_PLACEMENT_UPDATES: PlacementUpdate[] = []

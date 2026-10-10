@@ -1,5 +1,4 @@
-import { Routes, Route, useLocation } from 'react-router-dom'
-import { AnimatePresence } from 'framer-motion'
+import { Routes, Route } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { useAuth } from './hooks/useAuth'
 import { TabBar } from './components/TabBar'
@@ -43,7 +42,6 @@ export function App() {
     loginWithEmail,
     switchAccount,
   } = useAuth()
-  const location = useLocation()
 
   // 1. Session Restoration Loading State (No protected route flash)
   if (loading) {
@@ -78,17 +76,15 @@ export function App() {
       <Toaster position="top-center" toastOptions={{ duration: 4000 }} />
       <InstallBanner />
 
-      <AnimatePresence mode="wait">
-        <Routes location={location} key={location.pathname}>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/timetable" element={<TimetableScreen />} />
-          <Route path="/mess" element={<MessScreen />} />
-          <Route path="/projects" element={<ProjectsScreen />} />
-          <Route path="/interviews" element={<InterviewsScreen />} />
-          {isAdmin && <Route path="/admin" element={<AdminScreen />} />}
-          {FEATURE_ASK && <Route path="/ask" element={<AskPlaceholder />} />}
-        </Routes>
-      </AnimatePresence>
+      <Routes>
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/timetable" element={<TimetableScreen />} />
+        <Route path="/mess" element={<MessScreen />} />
+        <Route path="/projects" element={<ProjectsScreen />} />
+        <Route path="/interviews" element={<InterviewsScreen />} />
+        {isAdmin && <Route path="/admin" element={<AdminScreen />} />}
+        {FEATURE_ASK && <Route path="/ask" element={<AskPlaceholder />} />}
+      </Routes>
 
       <TabBar isAdmin={isAdmin} />
     </div>
