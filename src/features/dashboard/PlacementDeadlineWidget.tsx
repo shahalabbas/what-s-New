@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useNavigate } from 'react-router-dom'
 import { usePlacements } from '../../hooks/usePlacements'
 import { useNow } from '../../hooks/useNow'
 import { formatPlacementCountdown, formatPlacementDeadline } from '../../lib/timeUtils'
@@ -11,6 +12,7 @@ interface PlacementDeadlineWidgetProps {
 }
 
 export function PlacementDeadlineWidget({ onOpenDetail }: PlacementDeadlineWidgetProps) {
+  const navigate = useNavigate()
   const { openOpportunities, setApplicationStatus } = usePlacements()
   const [selectedOpp, setSelectedOpp] = useState<PlacementOpportunity | null>(null)
   const [appliedMap, setAppliedMap] = useState<Record<string, boolean>>({})
@@ -55,9 +57,17 @@ export function PlacementDeadlineWidget({ onOpenDetail }: PlacementDeadlineWidge
           <div className="flex items-center gap-2">
             <span className="text-base">💼</span>
             <h3 className="text-xs font-bold uppercase tracking-wider text-secondary-text">
-              Placement Deadlines
+              Placement Opportunities
             </h3>
           </div>
+          <button
+            type="button"
+            onClick={() => navigate('/placements')}
+            className="text-xs font-bold text-accent hover:opacity-80 transition-opacity flex items-center gap-0.5"
+          >
+            <span>View all</span>
+            <span>→</span>
+          </button>
         </div>
         <div className="py-6 text-center">
           <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center mx-auto text-slate-400 mb-2">
@@ -85,32 +95,40 @@ export function PlacementDeadlineWidget({ onOpenDetail }: PlacementDeadlineWidge
             </span>
           </div>
 
-          {/* Roller Controls when > 2 items */}
-          {sortedOpportunities.length > 2 && (
-            <div className="flex items-center gap-1">
-              <span className="text-[10px] font-semibold text-slate-400 mr-1 hidden sm:inline">
-                ↕ Scroll to roll
-              </span>
-              <button
-                type="button"
-                onClick={handleScrollUp}
-                aria-label="Roll to previous placement"
-                title="Previous"
-                className="w-6 h-6 rounded-full bg-slate-100 hover:bg-slate-200 active:scale-95 flex items-center justify-center text-[10px] text-slate-600 font-bold transition-all shadow-2xs"
-              >
-                ▲
-              </button>
-              <button
-                type="button"
-                onClick={handleScrollDown}
-                aria-label="Roll to next placement"
-                title="Next"
-                className="w-6 h-6 rounded-full bg-slate-100 hover:bg-slate-200 active:scale-95 flex items-center justify-center text-[10px] text-slate-600 font-bold transition-all shadow-2xs"
-              >
-                ▼
-              </button>
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            {/* Roller Controls when > 2 items */}
+            {sortedOpportunities.length > 2 && (
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={handleScrollUp}
+                  aria-label="Roll to previous placement"
+                  title="Previous"
+                  className="w-6 h-6 rounded-full bg-slate-100 hover:bg-slate-200 active:scale-95 flex items-center justify-center text-[10px] text-slate-600 font-bold transition-all shadow-2xs"
+                >
+                  ▲
+                </button>
+                <button
+                  type="button"
+                  onClick={handleScrollDown}
+                  aria-label="Roll to next placement"
+                  title="Next"
+                  className="w-6 h-6 rounded-full bg-slate-100 hover:bg-slate-200 active:scale-95 flex items-center justify-center text-[10px] text-slate-600 font-bold transition-all shadow-2xs"
+                >
+                  ▼
+                </button>
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() => navigate('/placements')}
+              className="text-xs font-bold text-accent hover:opacity-80 transition-opacity flex items-center gap-0.5"
+            >
+              <span>View all</span>
+              <span>→</span>
+            </button>
+          </div>
         </div>
 
         {/* 2-Item Fixed Roller Container */}
