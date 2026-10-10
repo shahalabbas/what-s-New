@@ -9,9 +9,15 @@ import type { PlacementOpportunity } from '../../types'
 
 interface PlacementDeadlineWidgetProps {
   onOpenDetail?: (opportunity: PlacementOpportunity) => void
+  onSwapOrder?: () => void
+  isAtBottom?: boolean
 }
 
-export function PlacementDeadlineWidget({ onOpenDetail }: PlacementDeadlineWidgetProps) {
+export function PlacementDeadlineWidget({
+  onOpenDetail,
+  onSwapOrder,
+  isAtBottom = false,
+}: PlacementDeadlineWidgetProps) {
   const navigate = useNavigate()
   const { openOpportunities, setApplicationStatus } = usePlacements()
   const [selectedOpp, setSelectedOpp] = useState<PlacementOpportunity | null>(null)
@@ -60,14 +66,26 @@ export function PlacementDeadlineWidget({ onOpenDetail }: PlacementDeadlineWidge
               Placement Opportunities
             </h3>
           </div>
-          <button
-            type="button"
-            onClick={() => navigate('/placements')}
-            className="text-xs font-bold text-accent hover:opacity-80 transition-opacity flex items-center gap-0.5"
-          >
-            <span>View all</span>
-            <span>→</span>
-          </button>
+          <div className="flex items-center gap-1.5">
+            {onSwapOrder && (
+              <button
+                type="button"
+                onClick={onSwapOrder}
+                title={isAtBottom ? 'Move Placements to top' : 'Pull Placements to bottom (I am placed)'}
+                className="px-2 py-0.5 rounded-full bg-slate-100 hover:bg-slate-200 active:scale-95 text-[10px] font-bold text-slate-600 transition-all flex items-center gap-0.5 shadow-2xs border border-slate-200/60"
+              >
+                <span>{isAtBottom ? '↑ Placed' : '↓ Placed'}</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => navigate('/placements')}
+              className="text-xs font-bold text-accent hover:opacity-80 transition-opacity flex items-center gap-0.5 ml-0.5"
+            >
+              <span>View all</span>
+              <span>→</span>
+            </button>
+          </div>
         </div>
         <div className="py-6 text-center">
           <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center mx-auto text-slate-400 mb-2">
@@ -83,7 +101,7 @@ export function PlacementDeadlineWidget({ onOpenDetail }: PlacementDeadlineWidge
   return (
     <>
       <section className="bg-white rounded-[26px] border border-slate-100 shadow-2xs p-4.5 space-y-2.5">
-        {/* Section Header with roller controls */}
+        {/* Section Header with roller controls and layout swap */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-sm">💼</span>
@@ -95,10 +113,22 @@ export function PlacementDeadlineWidget({ onOpenDetail }: PlacementDeadlineWidge
             </span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
+            {/* Swap Position / Placed pull down button */}
+            {onSwapOrder && (
+              <button
+                type="button"
+                onClick={onSwapOrder}
+                title={isAtBottom ? 'Move Placements above Projects' : 'Pull Placements to bottom (I am placed)'}
+                className="px-2 py-0.5 rounded-full bg-slate-100 hover:bg-slate-200 active:scale-95 text-[10px] font-bold text-slate-600 transition-all flex items-center gap-0.5 shadow-2xs border border-slate-200/60"
+              >
+                <span>{isAtBottom ? '↑ Placed' : '↓ Placed'}</span>
+              </button>
+            )}
+
             {/* Roller Controls when > 2 items */}
             {sortedOpportunities.length > 2 && (
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-0.5">
                 <button
                   type="button"
                   onClick={handleScrollUp}
@@ -123,7 +153,7 @@ export function PlacementDeadlineWidget({ onOpenDetail }: PlacementDeadlineWidge
             <button
               type="button"
               onClick={() => navigate('/placements')}
-              className="text-xs font-bold text-accent hover:opacity-80 transition-opacity flex items-center gap-0.5"
+              className="text-xs font-bold text-accent hover:opacity-80 transition-opacity flex items-center gap-0.5 ml-0.5"
             >
               <span>View all</span>
               <span>→</span>

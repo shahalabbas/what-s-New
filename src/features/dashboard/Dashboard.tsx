@@ -57,6 +57,33 @@ export function Dashboard() {
   const [showProfileSheet, setShowProfileSheet] = useState(false)
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
 
+  // Placed mode / Dashboard widget order state (persisted)
+  const [isPlacedMode, setIsPlacedMode] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('whats_next_is_placed')
+      return saved === 'true'
+    } catch {
+      return false
+    }
+  })
+
+  const togglePlacementOrder = () => {
+    setIsPlacedMode((prev) => {
+      const next = !prev
+      try {
+        localStorage.setItem('whats_next_is_placed', String(next))
+      } catch {}
+      return next
+    })
+  }
+
+  const setPlacedStatus = (placed: boolean) => {
+    setIsPlacedMode(placed)
+    try {
+      localStorage.setItem('whats_next_is_placed', String(placed))
+    } catch {}
+  }
+
   const handleTouchStart = (e: React.TouchEvent) => {
     if (window.scrollY === 0) {
       touchStartY.current = e.touches[0].clientY
@@ -171,15 +198,66 @@ export function Dashboard() {
           />
         </div>
 
-        {/* 2. PLACEMENT OPPORTUNITY (Live Countdown above projects) */}
-        <PlacementDeadlineWidget />
+        {/* 2 & 3. DYNAMIC ORDERING (Placements vs Projects) */}
+        {isPlacedMode ? (
+          <>
+            {/* PROJECTS & ASSIGNMENTS FIRST */}
+            <motion.div
+              key="projects-first-section"
+              layout
+              transition={{ duration: 0.25 }}
+            >
+              <DashboardProjectsSection
+                projects={projects.upcoming}
+                onSelectProject={(p) => setSelectedProject(p)}
+                onViewAll={() => navigate('/projects')}
+                onSwapOrder={togglePlacementOrder}
+                isAtTop={true}
+              />
+            </motion.div>
 
-        {/* 3. PROJECTS & ASSIGNMENTS SECTION */}
-        <DashboardProjectsSection
-          projects={projects.upcoming}
-          onSelectProject={(p) => setSelectedProject(p)}
-          onViewAll={() => navigate('/projects')}
-        />
+            {/* PLACEMENT OPPORTUNITY BELOW */}
+            <motion.div
+              key="placements-bottom-section"
+              layout
+              transition={{ duration: 0.25 }}
+            >
+              <PlacementDeadlineWidget
+                onSwapOrder={togglePlacementOrder}
+                isAtBottom={true}
+              />
+            </motion.div>
+          </>
+        ) : (
+          <>
+            {/* PLACEMENT OPPORTUNITY FIRST */}
+            <motion.div
+              key="placements-first-section"
+              layout
+              transition={{ duration: 0.25 }}
+            >
+              <PlacementDeadlineWidget
+                onSwapOrder={togglePlacementOrder}
+                isAtBottom={false}
+              />
+            </motion.div>
+
+            {/* PROJECTS & ASSIGNMENTS BELOW */}
+            <motion.div
+              key="projects-bottom-section"
+              layout
+              transition={{ duration: 0.25 }}
+            >
+              <DashboardProjectsSection
+                projects={projects.upcoming}
+                onSelectProject={(p) => setSelectedProject(p)}
+                onViewAll={() => navigate('/projects')}
+                onSwapOrder={togglePlacementOrder}
+                isAtTop={false}
+              />
+            </motion.div>
+          </>
+        )}
       </main>
 
       {/* ─── FULL DAY SCHEDULE SHEET ────────────────────────────────────────── */}
@@ -545,6 +623,53 @@ export function Dashboard() {
                   {profile?.program?.toUpperCase() || 'DEM'} {profile?.batch_year || 2026}
                 </span>
               </div>
+            </div>
+          </div>
+
+          {/* Placement Status / Dashboard Layout Setting */}
+          <div className="bg-surface/70 rounded-2xl p-4 border border-border/80 space-y-2.5">
+            <div className="space-y-0.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-primary-text flex items-center gap-1.5">
+                  <span>🎓</span>
+                  <span>Placement Status</span>
+                </span>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                  isPlacedMode ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'
+                }`}>
+                  {isPlacedMode ? 'Placed 🎉' : 'Seeking Job'}
+                </span>
+              </div>
+              <p className="text-[11px] text-secondary-text">
+                {isPlacedMode
+                  ? 'Congratulations! Projects & coursework are prioritized at the top, placements moved to bottom.'
+                  : 'Placement opportunities and deadlines are prioritized at the top.'}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setPlacedStatus(false)}
+                className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                  !isPlacedMode
+                    ? 'bg-accent text-white shadow-xs'
+                    : 'bg-white text-secondary-text hover:text-primary-text border border-border'
+                }`}
+              >
+                <span>💼 Seeking Job</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPlacedStatus(true)}
+                className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                  isPlacedMode
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'bg-white text-secondary-text hover:text-primary-text border border-border'
+                }`}
+              >
+                <span>🎓 I am Placed</span>
+              </button>
             </div>
           </div>
 
@@ -1149,10 +1274,14 @@ function DashboardProjectsSection({
   projects,
   onSelectProject,
   onViewAll,
+  onSwapOrder,
+  isAtTop = false,
 }: {
   projects: Project[]
   onSelectProject: (p: Project) => void
   onViewAll: () => void
+  onSwapOrder?: () => void
+  isAtTop?: boolean
 }) {
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -1187,9 +1316,21 @@ function DashboardProjectsSection({
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
+          {/* Swap Position / Placed toggle button */}
+          {onSwapOrder && (
+            <button
+              type="button"
+              onClick={onSwapOrder}
+              title={isAtTop ? 'Move Projects below Placements' : 'Move Projects above Placements'}
+              className="px-2 py-0.5 rounded-full bg-slate-100 hover:bg-slate-200 active:scale-95 text-[10px] font-bold text-slate-600 transition-all flex items-center gap-0.5 shadow-2xs border border-slate-200/60"
+            >
+              <span>{isAtTop ? '↓ Placements' : '↑ Projects'}</span>
+            </button>
+          )}
+
           {sortedProjects.length > 2 && (
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-0.5">
               <button
                 type="button"
                 onClick={handleScrollUp}
@@ -1214,7 +1355,7 @@ function DashboardProjectsSection({
           <button
             type="button"
             onClick={onViewAll}
-            className="text-xs font-bold text-accent hover:opacity-80 transition-opacity flex items-center gap-0.5"
+            className="text-xs font-bold text-accent hover:opacity-80 transition-opacity flex items-center gap-0.5 ml-0.5"
           >
             <span>View all</span>
             <span>→</span>
