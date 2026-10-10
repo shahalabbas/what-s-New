@@ -6,6 +6,7 @@ import { useSchedule } from '../../hooks/useSchedule'
 import { useMessMenu } from '../../hooks/useMessMenu'
 import { useProjects } from '../../hooks/useProjects'
 import { useInterviews } from '../../hooks/useInterviews'
+import { useNow } from '../../hooks/useNow'
 import {
   formatTime12,
   dayOffsetIST,
@@ -43,6 +44,7 @@ export function Dashboard() {
   const projects = useProjects()
   const interviews = useInterviews()
   const { user, profile, signOut } = useAuth()
+  useNow()
 
   // Pull-to-refresh state
   const [pullY, setPullY] = useState(0)

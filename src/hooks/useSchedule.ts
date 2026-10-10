@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase, isConfiguredSupabase } from '../lib/supabase'
+import { useOnAppResume } from '../lib/lifecycle'
 import {
   getSessionsFromDatedSessions,
   getCurrentSession,
@@ -101,26 +102,25 @@ export function useSchedule() {
     }
   }, [])
 
-  // Tick every 30 seconds and update on tab visibility or schedule update
+// Tick every 30 seconds and update on tab visibility or schedule update
   useEffect(() => {
     const tick = () => setCurrentTime(formatIST(nowIST(), 'HH:mm'))
     tick()
     const id = setInterval(tick, 30_000)
 
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') {
-        tick()
-      }
-    }
-    document.addEventListener('visibilitychange', handleVisibility)
     window.addEventListener('schedule_updated', fetchData)
 
     return () => {
       clearInterval(id)
-      document.removeEventListener('visibilitychange', handleVisibility)
       window.removeEventListener('schedule_updated', fetchData)
     }
   }, [fetchData])
+
+  // Automatically tick clock and fetch fresh schedule when app resumes from background
+  useOnAppResume(() => {
+    setCurrentTime(formatIST(nowIST(), 'HH:mm'))
+    fetchData()
+  })
 
   useEffect(() => { fetchData() }, [fetchData])
 

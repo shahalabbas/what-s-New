@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useOnAppResume } from '../lib/lifecycle'
 
 /**
  * Shared app-wide clock hook:
  * - Ticks every 1s only when hasUrgentCountdown is true (i.e. at least one visible item < 1h away)
  * - Otherwise ticks every 30s to conserve CPU and battery
  * - Pauses on document.visibilitychange ('hidden')
- * - Immediately recalculates upon becoming visible again
+ * - Immediately recalculates upon becoming visible again or on app resume
  */
 export function useNow(hasUrgentCountdown: boolean = false): Date {
   const [now, setNow] = useState<Date>(() => new Date())
@@ -15,6 +16,10 @@ export function useNow(hasUrgentCountdown: boolean = false): Date {
   const updateNow = useCallback(() => {
     setNow(new Date())
   }, [])
+
+  useOnAppResume(() => {
+    updateNow()
+  })
 
   useEffect(() => {
     let timerId: ReturnType<typeof setInterval> | null = null

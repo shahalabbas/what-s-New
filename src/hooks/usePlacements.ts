@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase, isConfiguredSupabase } from '../lib/supabase'
+import { useOnAppResume } from '../lib/lifecycle'
 import type {
   PlacementOpportunity,
   PlacementUpdate,
@@ -134,21 +135,12 @@ export function usePlacements() {
 
   useEffect(() => {
     fetchData()
-
-    const handleFocus = () => {
-      fetchData()
-    }
-    const handleVisibility = () => {
-      if (!document.hidden) fetchData()
-    }
-
-    window.addEventListener('focus', handleFocus)
-    document.addEventListener('visibilitychange', handleVisibility)
-    return () => {
-      window.removeEventListener('focus', handleFocus)
-      document.removeEventListener('visibilitychange', handleVisibility)
-    }
   }, [fetchData])
+
+  // Automatically refresh placements when app resumes from background
+  useOnAppResume(() => {
+    fetchData()
+  })
 
   const setApplicationStatus = useCallback(
     async (opportunityId: string, status: StudentApplicationStatus) => {

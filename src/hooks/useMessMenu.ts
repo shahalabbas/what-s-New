@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase, isConfiguredSupabase } from '../lib/supabase'
+import { useOnAppResume } from '../lib/lifecycle'
 import {
   todayIST,
   dayOffsetIST,
@@ -137,24 +138,23 @@ export function useMessMenu() {
     tick()
     const id = setInterval(tick, 30_000)
 
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') {
-        tick()
-      }
-    }
     const handleMessUpdated = () => {
       fetchData()
     }
 
-    document.addEventListener('visibilitychange', handleVisibility)
     window.addEventListener('mess_updated', handleMessUpdated)
 
     return () => {
       clearInterval(id)
-      document.removeEventListener('visibilitychange', handleVisibility)
       window.removeEventListener('mess_updated', handleMessUpdated)
     }
   }, [fetchData])
+
+  // Automatically tick clock and sync fresh menu when app resumes from background
+  useOnAppResume(() => {
+    setCurrentTime(formatIST(nowIST(), 'HH:mm'))
+    fetchData()
+  })
 
   useEffect(() => { fetchData() }, [fetchData])
 

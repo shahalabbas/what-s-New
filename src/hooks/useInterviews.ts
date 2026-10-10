@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase, isConfiguredSupabase } from '../lib/supabase'
+import { useOnAppResume } from '../lib/lifecycle'
 import type { InterviewSubmission } from '../types'
 import { MOCK_INTERVIEWS } from '../lib/mockData'
 
@@ -43,6 +44,11 @@ export function useInterviews() {
   }, [])
 
   useEffect(() => { fetchData() }, [fetchData])
+
+  // Automatically refresh interviews when app resumes from background
+  useOnAppResume(() => {
+    fetchData()
+  })
 
   const filtered = submissions.filter((s) => {
     if (!search) return true

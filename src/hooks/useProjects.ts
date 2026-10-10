@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase, isConfiguredSupabase } from '../lib/supabase'
+import { useOnAppResume } from '../lib/lifecycle'
 import type { Project, ProjectType } from '../types'
 import { MOCK_PROJECTS } from '../lib/mockData'
 
@@ -43,6 +44,11 @@ export function useProjects() {
   }, [])
 
   useEffect(() => { fetchData() }, [fetchData])
+
+  // Automatically refresh projects when app resumes from background
+  useOnAppResume(() => {
+    fetchData()
+  })
 
   const filtered = filter === 'all'
     ? projects
