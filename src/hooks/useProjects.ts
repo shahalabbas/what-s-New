@@ -31,7 +31,7 @@ export function useProjects() {
         .select('*, course:courses(*)')
         .order('deadline', { ascending: true })
       if (err) throw err
-      if (data && data.length > 0) {
+      if (data) {
         setProjects(data)
         try { localStorage.setItem('cache_projects', JSON.stringify(data)) } catch {}
       }

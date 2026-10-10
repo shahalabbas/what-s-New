@@ -114,38 +114,7 @@ export function getMockMessMenus(targetDate: string): MessMenu[] {
   ]
 }
 
-export const MOCK_PROJECTS: Project[] = [
-  {
-    id: 'p-1',
-    course_id: 'c-1',
-    title: 'AA-II Predictive Modelling Assignment',
-    description: 'Build predictive regression and classification models using python statsmodels & scikit-learn on the provided churn dataset.',
-    type: 'assignment',
-    group_size: 2,
-    deadline: new Date(Date.now() + 86400000 * 2.5).toISOString(),
-    submission_link: 'https://forms.gle/sample',
-    attachments: [],
-    status: 'open',
-    program: 'dem',
-    batch_year: 2026,
-    course: MOCK_COURSES[0],
-  },
-  {
-    id: 'p-2',
-    course_id: 'c-10',
-    title: 'Platform Business Model Case Analysis',
-    description: 'Analyse network effects, multi-homing costs, and monetisation strategy for an emerging digital platform.',
-    type: 'project',
-    group_size: 4,
-    deadline: new Date(Date.now() + 86400000 * 6).toISOString(),
-    submission_link: 'https://teams.microsoft.com',
-    attachments: [],
-    status: 'open',
-    program: 'dem',
-    batch_year: 2026,
-    course: MOCK_COURSES[9],
-  },
-]
+export const MOCK_PROJECTS: Project[] = []
 
 export const MOCK_SUBMISSIONS: InterviewSubmission[] = [
   {
