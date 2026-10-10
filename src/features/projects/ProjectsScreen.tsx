@@ -127,15 +127,28 @@ export function ProjectsScreen() {
     setSubmitting(true)
     try {
       if (isConfiguredSupabase) {
-        const { error: err } = await supabase
-          .from('projects')
-          .delete()
-          .eq('id', project.id)
-        if (err) throw err
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(project.id)
+        if (isUuid) {
+          const { error: err } = await supabase
+            .from('projects')
+            .delete()
+            .eq('id', project.id)
+          if (err) throw err
+        }
       }
+      try {
+        const cached = localStorage.getItem('cache_projects')
+        if (cached) {
+          const list: Project[] = JSON.parse(cached)
+          const updated = list.filter((p) => p.id !== project.id)
+          localStorage.setItem('cache_projects', JSON.stringify(updated))
+          localStorage.setItem('whats_next_projects', JSON.stringify(updated))
+        }
+      } catch {}
       toast.success('Project deleted')
       setDeletingProject(null)
       setSelected(null)
+      window.dispatchEvent(new CustomEvent('app_resume_sync'))
       await refresh()
     } catch (err: any) {
       toast.error(err.message || 'Failed to delete project')

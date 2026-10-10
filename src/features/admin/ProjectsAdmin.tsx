@@ -184,13 +184,25 @@ export function ProjectsAdmin({ courses = [] }: { courses?: Course[] }) {
     if (!confirm('Are you sure you want to delete this project?')) return
     try {
       if (isConfiguredSupabase) {
-        await supabase.from('projects').delete().eq('id', id)
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
+        if (isUuid) {
+          const { error: delErr } = await supabase.from('projects').delete().eq('id', id)
+          if (delErr) {
+            console.error('Failed to delete project from Supabase:', delErr)
+            throw delErr
+          }
+        }
       }
       const updated = projects.filter((p) => p.id !== id)
       setProjects(updated)
-      localStorage.setItem('whats_next_projects', JSON.stringify(updated))
+      try {
+        localStorage.setItem('cache_projects', JSON.stringify(updated))
+        localStorage.setItem('whats_next_projects', JSON.stringify(updated))
+      } catch {}
       window.dispatchEvent(new Event('schedule_updated'))
+      window.dispatchEvent(new CustomEvent('app_resume_sync'))
       toast.success('Deliverable deleted.')
+      await fetchProjects()
     } catch (err: any) {
       toast.error(`Delete failed: ${err.message}`)
     }
