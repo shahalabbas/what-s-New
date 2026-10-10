@@ -1160,10 +1160,25 @@ function DashboardProjectsSection({
   onSelectProject: (p: Project) => void
   onViewAll: () => void
 }) {
-  const upcomingList = projects.slice(0, 3)
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  // Sort upcoming projects: nearest deadline first
+  const sortedProjects = [...projects].sort(
+    (a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime()
+  )
+
+  const handleScrollUp = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    scrollRef.current?.scrollBy({ top: -104, behavior: 'smooth' })
+  }
+
+  const handleScrollDown = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    scrollRef.current?.scrollBy({ top: 104, behavior: 'smooth' })
+  }
 
   return (
-    <section className="bg-white rounded-[26px] border border-slate-100 shadow-2xs p-4.5 space-y-3">
+    <section className="bg-white rounded-[26px] border border-slate-100 shadow-2xs p-4.5 space-y-2.5">
       {/* Section Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -1171,26 +1186,58 @@ function DashboardProjectsSection({
           <h2 className="text-xs font-extrabold text-slate-400 tracking-wider uppercase">
             Projects & Deadlines
           </h2>
-          {upcomingList.length > 0 && (
-            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600">
-              {upcomingList.length} upcoming
+          {sortedProjects.length > 0 && (
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200/60">
+              {sortedProjects.length} upcoming
             </span>
           )}
         </div>
-        <button
-          type="button"
-          onClick={onViewAll}
-          className="text-xs font-bold text-accent hover:opacity-80 transition-opacity flex items-center gap-0.5"
-        >
-          <span>View all</span>
-          <span>→</span>
-        </button>
+
+        <div className="flex items-center gap-2">
+          {sortedProjects.length > 2 && (
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={handleScrollUp}
+                aria-label="Roll to previous project"
+                title="Previous"
+                className="w-6 h-6 rounded-full bg-slate-100 hover:bg-slate-200 active:scale-95 flex items-center justify-center text-[10px] text-slate-600 font-bold transition-all shadow-2xs"
+              >
+                ▲
+              </button>
+              <button
+                type="button"
+                onClick={handleScrollDown}
+                aria-label="Roll to next project"
+                title="Next"
+                className="w-6 h-6 rounded-full bg-slate-100 hover:bg-slate-200 active:scale-95 flex items-center justify-center text-[10px] text-slate-600 font-bold transition-all shadow-2xs"
+              >
+                ▼
+              </button>
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={onViewAll}
+            className="text-xs font-bold text-accent hover:opacity-80 transition-opacity flex items-center gap-0.5"
+          >
+            <span>View all</span>
+            <span>→</span>
+          </button>
+        </div>
       </div>
 
-      {/* Projects List or Empty State */}
-      {upcomingList.length > 0 ? (
-        <div className="space-y-2.5">
-          {upcomingList.map((item) => {
+      {/* Projects 2-Item Fixed Roller Container */}
+      {sortedProjects.length > 0 ? (
+        <div
+          ref={scrollRef}
+          className={`space-y-2 overflow-y-auto snap-y snap-mandatory scroll-smooth pr-0.5 scrollbar-none overscroll-contain ${
+            sortedProjects.length > 1 ? 'max-h-[200px]' : ''
+          }`}
+          style={{ scrollSnapType: 'y mandatory' }}
+        >
+          {sortedProjects.map((item) => {
             const secs = secondsUntilDeadline(item.deadline)
             const isPast = secs <= 0
             const isUrgent = secs > 0 && secs < 86400 * 2
@@ -1203,27 +1250,27 @@ function DashboardProjectsSection({
               <motion.div
                 key={item.id}
                 data-testid="dashboard-project-card"
-                whileTap={{ scale: 0.98 }}
+                whileTap={{ scale: 0.985 }}
                 onClick={() => onSelectProject(item)}
-                className="p-3 rounded-2xl bg-surface/70 hover:bg-surface border border-border/80 cursor-pointer transition-all space-y-1.5"
+                className="min-h-[96px] max-h-[96px] h-[96px] snap-start rounded-2xl bg-surface/80 hover:bg-surface border border-border/80 p-3 cursor-pointer flex flex-col justify-between transition-all hover:shadow-xs select-none"
               >
                 {/* Top Row: Type Badge + Course Tag + Countdown */}
                 <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-1.5 flex-wrap">
+                  <div className="flex items-center gap-1.5 flex-wrap min-w-0">
                     <span
                       className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${typeConfig.bg}`}
                     >
                       {typeConfig.label}
                     </span>
                     {item.course && (
-                      <span className="text-[10px] font-semibold text-secondary-text">
+                      <span className="text-[10px] font-semibold text-secondary-text truncate max-w-[120px]">
                         {item.course.code}
                       </span>
                     )}
                   </div>
 
                   <span
-                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                    className={`flex-shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full ${
                       isPast
                         ? 'bg-slate-100 text-slate-500'
                         : isUrgent
@@ -1236,16 +1283,23 @@ function DashboardProjectsSection({
                 </div>
 
                 {/* Title */}
-                <h3 className="text-xs font-bold text-primary-text line-clamp-1">
+                <h3 className="text-xs font-bold text-primary-text truncate leading-tight">
                   {item.title}
                 </h3>
 
                 {/* Sub-info: Formatted date & group size */}
-                <div className="flex items-center justify-between text-[11px] text-secondary-text pt-0.5">
-                  <span className="truncate">{formatDeadline(item.deadline)}</span>
-                  {item.group_size > 1 && (
-                    <span className="text-[10px] font-medium text-slate-500">
+                <div className="flex items-center justify-between text-[10px] text-secondary-text pt-0.5 border-t border-border/50">
+                  <span className="truncate flex items-center gap-1">
+                    <span>📅</span>
+                    <span>{formatDeadline(item.deadline)}</span>
+                  </span>
+                  {item.group_size > 1 ? (
+                    <span className="text-[10px] font-medium text-slate-500 flex-shrink-0">
                       👥 Group of {item.group_size}
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-medium text-slate-400 flex-shrink-0">
+                      👤 Individual
                     </span>
                   )}
                 </div>

@@ -50,7 +50,7 @@ export function useProjects() {
 
   const upcoming = projects
     .filter((p) => new Date(p.deadline) > new Date())
-    .slice(0, 3)
+    .sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime())
 
   return {
     projects: filtered,

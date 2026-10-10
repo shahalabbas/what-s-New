@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { usePlacements } from '../../hooks/usePlacements'
 import { useNow } from '../../hooks/useNow'
@@ -11,28 +11,44 @@ interface PlacementDeadlineWidgetProps {
 }
 
 export function PlacementDeadlineWidget({ onOpenDetail }: PlacementDeadlineWidgetProps) {
-  const { openOpportunities, nearestActionableOpportunity, setApplicationStatus } = usePlacements()
+  const { openOpportunities, setApplicationStatus } = usePlacements()
   const [selectedOpp, setSelectedOpp] = useState<PlacementOpportunity | null>(null)
-  const [justApplied, setJustApplied] = useState(false)
+  const [appliedMap, setAppliedMap] = useState<Record<string, boolean>>({})
+  const scrollRef = useRef<HTMLDivElement>(null)
 
-  // Determine if nearest countdown is under 1 hour for high-frequency 1s ticking
-  const now = useNow(
-    nearestActionableOpportunity?.deadline_at
-      ? (new Date(nearestActionableOpportunity.deadline_at).getTime() - Date.now()) < 3600000
-      : false
-  )
+  // Sort open opportunities: nearest deadline first
+  const sortedOpportunities = [...openOpportunities].sort((a, b) => {
+    if (!a.deadline_at && !b.deadline_at) return 0
+    if (!a.deadline_at) return 1
+    if (!b.deadline_at) return -1
+    return new Date(a.deadline_at).getTime() - new Date(b.deadline_at).getTime()
+  })
 
-  const activeOpp = nearestActionableOpportunity
-
-  // Count additional opportunities closing this week (next 7 days)
-  const additionalClosingCount = openOpportunities.filter((o) => {
-    if (!activeOpp || o.id === activeOpp.id) return false
+  // Determine if any deadline is under 1 hour for high-frequency 1s ticking
+  const hasUrgentDeadline = sortedOpportunities.some((o) => {
     if (!o.deadline_at) return false
-    const diff = new Date(o.deadline_at).getTime() - now.getTime()
-    return diff > 0 && diff <= 7 * 86400000
-  }).length
+    const diff = new Date(o.deadline_at).getTime() - Date.now()
+    return diff > 0 && diff < 3600000
+  })
+  const now = useNow(hasUrgentDeadline)
 
-  if (!activeOpp) {
+  const handleScrollUp = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    scrollRef.current?.scrollBy({ top: -104, behavior: 'smooth' })
+  }
+
+  const handleScrollDown = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    scrollRef.current?.scrollBy({ top: 104, behavior: 'smooth' })
+  }
+
+  const handleMarkApplied = async (e: React.MouseEvent, oppId: string) => {
+    e.stopPropagation()
+    setAppliedMap((prev) => ({ ...prev, [oppId]: true }))
+    await setApplicationStatus(oppId, 'applied')
+  }
+
+  if (sortedOpportunities.length === 0) {
     return (
       <section className="bg-white rounded-[26px] border border-slate-100 shadow-2xs p-4.5">
         <div className="flex items-center justify-between">
@@ -54,136 +70,151 @@ export function PlacementDeadlineWidget({ onOpenDetail }: PlacementDeadlineWidge
     )
   }
 
-  const countdown = formatPlacementCountdown(activeOpp.deadline_at || '', now)
-
-  const urgencyStyles = {
-    normal: {
-      cardBorder: 'border-slate-100',
-      badgeBg: 'bg-primary-text text-white',
-      chipBg: 'bg-slate-100 text-slate-700',
-      accentColor: 'text-primary-text',
-      icon: '⏱️',
-    },
-    warm: {
-      cardBorder: 'border-amber-200/80 bg-gradient-to-br from-white to-amber-50/40',
-      badgeBg: 'bg-amber-500 text-white shadow-sm shadow-amber-500/20',
-      chipBg: 'bg-amber-100 text-amber-900 border border-amber-200/60',
-      accentColor: 'text-amber-600',
-      icon: '⏳',
-    },
-    urgent: {
-      cardBorder: 'border-rose-200/90 bg-gradient-to-br from-white to-rose-50/50',
-      badgeBg: 'bg-rose-500 text-white shadow-sm shadow-rose-500/30 animate-pulse',
-      chipBg: 'bg-rose-100 text-rose-900 border border-rose-200/60',
-      accentColor: 'text-rose-600',
-      icon: '🔥',
-    },
-    closed: {
-      cardBorder: 'border-slate-200 bg-slate-50/60 opacity-80',
-      badgeBg: 'bg-slate-400 text-white',
-      chipBg: 'bg-slate-100 text-slate-500',
-      accentColor: 'text-slate-500',
-      icon: '🔒',
-    },
-  }[countdown.urgency]
-
-  const handleMarkApplied = async (e: React.MouseEvent) => {
-    e.stopPropagation()
-    setJustApplied(true)
-    await setApplicationStatus(activeOpp.id, 'applied')
-    setTimeout(() => setJustApplied(false), 2000)
-  }
-
   return (
     <>
-      <motion.section
-        layout
-        onClick={() => {
-          if (onOpenDetail) onOpenDetail(activeOpp)
-          else setSelectedOpp(activeOpp)
-        }}
-        className={`bg-white rounded-[26px] border ${urgencyStyles.cardBorder} shadow-2xs p-4.5 pb-4 cursor-pointer relative transition-all hover:shadow-sm active:scale-[0.99]`}
-      >
-        {/* Header bar */}
-        <div className="flex items-center justify-between gap-2 mb-2">
-          <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-            <span className="text-xs">💼</span>
-            <h3 className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
-              Placement Opportunity
-            </h3>
-            {activeOpp.additional_details?.map((d, i) => (
-              <span
-                key={i}
-                className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200/80"
-              >
-                {d.label}: {d.value}
+      <section className="bg-white rounded-[26px] border border-slate-100 shadow-2xs p-4.5 space-y-2.5">
+        {/* Section Header with roller controls */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-sm">💼</span>
+            <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
+              Placement Opportunities
+            </h2>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200/60">
+              {sortedOpportunities.length} active
+            </span>
+          </div>
+
+          {/* Roller Controls when > 2 items */}
+          {sortedOpportunities.length > 2 && (
+            <div className="flex items-center gap-1">
+              <span className="text-[10px] font-semibold text-slate-400 mr-1 hidden sm:inline">
+                ↕ Scroll to roll
               </span>
-            ))}
-          </div>
-
-          {/* Large prominent countdown pill */}
-          <div className="flex-shrink-0">
-            <span
-              className={`px-2.5 py-1 rounded-full text-xs font-black tracking-tight flex items-center gap-1 ${urgencyStyles.badgeBg}`}
-            >
-              <span className="text-[10px]">{urgencyStyles.icon}</span>
-              <span>{countdown.formatted}</span>
-            </span>
-          </div>
-        </div>
-
-        {/* Company & Role */}
-        <div className="flex items-center justify-between gap-3 my-1">
-          <div className="min-w-0 flex-1">
-            <h4 className="text-base font-black text-slate-900 tracking-tight truncate leading-snug">
-              {activeOpp.company}
-            </h4>
-            <p className="text-xs font-medium text-slate-500 truncate mt-0.5" title={activeOpp.role}>
-              {activeOpp.role}
-            </p>
-          </div>
-
-          {/* Quick "Applied" Action Button */}
-          <motion.button
-            whileTap={{ scale: 0.92 }}
-            onClick={handleMarkApplied}
-            className={`flex-shrink-0 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 shadow-2xs ${
-              justApplied
-                ? 'bg-emerald-600 text-white'
-                : 'bg-white text-slate-800 hover:bg-slate-100 border border-slate-200'
-            }`}
-          >
-            {justApplied ? (
-              <>
-                <span>✓</span>
-                <span>Applied</span>
-              </>
-            ) : (
-              <>
-                <span>✓</span>
-                <span>Mark Applied</span>
-              </>
-            )}
-          </motion.button>
-        </div>
-
-        {/* Deadline text & closing this week count */}
-        <div className="flex items-center justify-between text-[11px] font-medium text-secondary-text mt-3 pt-2.5 border-t border-slate-100/90 leading-normal">
-          <div className="flex items-center gap-1.5 truncate text-slate-600">
-            <span className="text-xs">📅</span>
-            <span className="font-semibold truncate">
-              {activeOpp.deadline_at
-                ? formatPlacementDeadline(activeOpp.deadline_at)
-                : 'Open for applications'}
-            </span>
-          </div>
-          {additionalClosingCount > 0 && (
-            <span className="font-bold text-slate-700 whitespace-nowrap pl-2 text-[10px] bg-slate-100 px-2 py-0.5 rounded-full">
-              +{additionalClosingCount} more
-            </span>
+              <button
+                type="button"
+                onClick={handleScrollUp}
+                aria-label="Roll to previous placement"
+                title="Previous"
+                className="w-6 h-6 rounded-full bg-slate-100 hover:bg-slate-200 active:scale-95 flex items-center justify-center text-[10px] text-slate-600 font-bold transition-all shadow-2xs"
+              >
+                ▲
+              </button>
+              <button
+                type="button"
+                onClick={handleScrollDown}
+                aria-label="Roll to next placement"
+                title="Next"
+                className="w-6 h-6 rounded-full bg-slate-100 hover:bg-slate-200 active:scale-95 flex items-center justify-center text-[10px] text-slate-600 font-bold transition-all shadow-2xs"
+              >
+                ▼
+              </button>
+            </div>
           )}
         </div>
-      </motion.section>
+
+        {/* 2-Item Fixed Roller Container */}
+        <div
+          ref={scrollRef}
+          className={`space-y-2 overflow-y-auto snap-y snap-mandatory scroll-smooth pr-0.5 scrollbar-none overscroll-contain ${
+            sortedOpportunities.length > 1 ? 'max-h-[200px]' : ''
+          }`}
+          style={{ scrollSnapType: 'y mandatory' }}
+        >
+          {sortedOpportunities.map((opp) => {
+            const isApplied =
+              appliedMap[opp.id] ||
+              opp.student_application?.status === 'applied'
+
+            const countdown = formatPlacementCountdown(opp.deadline_at || '', now)
+
+            const urgencyStyles = {
+              normal: {
+                cardBg: 'bg-slate-50/70 hover:bg-slate-50/95 border-slate-200/70',
+                badgeBg: 'bg-slate-800 text-white',
+                icon: '⏱️',
+              },
+              warm: {
+                cardBg: 'bg-gradient-to-r from-amber-50/70 to-orange-50/40 hover:bg-amber-50 border-amber-200/90',
+                badgeBg: 'bg-amber-500 text-white shadow-xs shadow-amber-500/20',
+                icon: '⏳',
+              },
+              urgent: {
+                cardBg: 'bg-gradient-to-r from-rose-50/80 to-amber-50/40 hover:bg-rose-50 border-rose-200/90',
+                badgeBg: 'bg-rose-500 text-white shadow-xs shadow-rose-500/30 animate-pulse',
+                icon: '🔥',
+              },
+              closed: {
+                cardBg: 'bg-slate-50/50 border-slate-200 opacity-75',
+                badgeBg: 'bg-slate-400 text-white',
+                icon: '🔒',
+              },
+            }[countdown.urgency]
+
+            return (
+              <motion.div
+                key={opp.id}
+                layout
+                whileTap={{ scale: 0.985 }}
+                onClick={() => {
+                  if (onOpenDetail) onOpenDetail(opp)
+                  else setSelectedOpp(opp)
+                }}
+                className={`min-h-[96px] max-h-[96px] h-[96px] snap-start rounded-2xl border ${urgencyStyles.cardBg} p-3 cursor-pointer flex flex-col justify-between transition-all hover:shadow-xs select-none`}
+              >
+                {/* Row 1: Company + Extra Tags + Countdown */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                    <h4 className="text-xs font-black text-slate-900 tracking-tight truncate">
+                      {opp.company}
+                    </h4>
+                    {opp.additional_details && opp.additional_details.length > 0 && (
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-white/80 text-slate-600 border border-slate-200/60 truncate max-w-[120px]">
+                        {opp.additional_details[0].value}
+                      </span>
+                    )}
+                  </div>
+
+                  <span
+                    className={`flex-shrink-0 px-2 py-0.5 rounded-full text-[10px] font-black tracking-tight flex items-center gap-1 ${urgencyStyles.badgeBg}`}
+                  >
+                    <span className="text-[9px]">{urgencyStyles.icon}</span>
+                    <span>{countdown.formatted}</span>
+                  </span>
+                </div>
+
+                {/* Row 2: Role */}
+                <p className="text-[11px] font-medium text-slate-600 truncate leading-tight" title={opp.role}>
+                  {opp.role}
+                </p>
+
+                {/* Row 3: Deadline + Mark Applied Action */}
+                <div className="flex items-center justify-between gap-2 text-[10px] pt-0.5 border-t border-slate-200/50">
+                  <div className="flex items-center gap-1 text-slate-500 truncate font-medium">
+                    <span>📅</span>
+                    <span className="truncate">
+                      {opp.deadline_at ? formatPlacementDeadline(opp.deadline_at) : 'Open for applications'}
+                    </span>
+                  </div>
+
+                  <motion.button
+                    whileTap={{ scale: 0.92 }}
+                    onClick={(e) => handleMarkApplied(e, opp.id)}
+                    className={`flex-shrink-0 px-2.5 py-0.5 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 shadow-2xs ${
+                      isApplied
+                        ? 'bg-emerald-600 text-white font-extrabold'
+                        : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+                    }`}
+                  >
+                    <span>✓</span>
+                    <span>{isApplied ? 'Applied' : 'Mark Applied'}</span>
+                  </motion.button>
+                </div>
+              </motion.div>
+            )
+          })}
+        </div>
+      </section>
 
       {/* Detail Modal if opened internally */}
       <AnimatePresence>
