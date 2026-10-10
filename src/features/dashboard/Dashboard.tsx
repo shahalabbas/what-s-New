@@ -156,7 +156,7 @@ export function Dashboard() {
       </AnimatePresence>
 
       {/* Header matching layout */}
-      <header className="px-5 pt-safe-top pt-4 pb-2 bg-transparent max-w-md mx-auto">
+      <header className="px-5 pt-safe-top pb-2 bg-transparent max-w-md mx-auto">
         <div className="flex items-start justify-between">
           <div>
             <p className="text-xs font-semibold text-slate-500 tracking-tight">

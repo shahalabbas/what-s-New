@@ -34,12 +34,15 @@
 }
 
 @layer utilities {
-  .safe-top { padding-top: env(safe-area-inset-top); }
-  .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
-  .safe-left { padding-left: env(safe-area-inset-left); }
-  .safe-right { padding-right: env(safe-area-inset-right); }
-  .pb-tab-bar { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
-  .h-tab-bar { height: calc(64px + env(safe-area-inset-bottom)); }
+  .pt-safe-top { padding-top: calc(env(safe-area-inset-top, 0px) + 16px); }
+  .pt-safe { padding-top: env(safe-area-inset-top, 0px); }
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
+  .safe-top { padding-top: calc(env(safe-area-inset-top, 0px) + 16px); }
+  .safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
+  .safe-left { padding-left: env(safe-area-inset-left, 0px); }
+  .safe-right { padding-right: env(safe-area-inset-right, 0px); }
+  .pb-tab-bar { padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
+  .h-tab-bar { height: calc(64px + env(safe-area-inset-bottom, 0px)); }
 
   .text-balance { text-wrap: balance; }
 
