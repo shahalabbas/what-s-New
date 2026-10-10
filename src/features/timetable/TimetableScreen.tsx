@@ -4,7 +4,7 @@ import { useSchedule } from '../../hooks/useSchedule'
 import { formatTime12, dayOffsetIST } from '../../lib/timeUtils'
 import { fadeRise, stagger, spring } from '../../lib/motion'
 import { ListSkeleton } from '../../components/Skeleton'
-import type { ResolvedSession } from '../../types'
+import type { ResolvedSession, CampusEvent } from '../../types'
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const SESSION_TYPE_COLORS: Record<string, string> = {
@@ -21,6 +21,9 @@ export function TimetableScreen() {
 
   const selectedDate = dayOffsetIST(selectedOffset)
   const sessions = schedule.getSessionsForDate(selectedDate)
+  const dayEvents = schedule.events.filter(
+    (e) => e.date === selectedDate && e.status !== 'cancelled'
+  )
 
   // Day selector: show 7 days centered on today
   const dayOffsets = [-2, -1, 0, 1, 2, 3, 4]
@@ -47,6 +50,9 @@ export function TimetableScreen() {
             const isSelected = offset === selectedOffset
             const isToday = offset === 0
 
+            const hasSessions = schedule.getSessionsForDate(dateStr).length > 0
+            const hasEvents = schedule.events.some((e) => e.date === dateStr && e.status !== 'cancelled')
+
             return (
               <motion.button
                 key={offset}
@@ -63,9 +69,11 @@ export function TimetableScreen() {
                 <span className={`text-lg font-bold ${isSelected ? 'text-white' : 'text-primary-text'}`}>
                   {dayNum}
                 </span>
-                {isToday && !isSelected && (
+                {isToday && !isSelected ? (
                   <span className="absolute bottom-1 w-1 h-1 bg-accent rounded-full" />
-                )}
+                ) : (hasSessions || hasEvents) && !isSelected ? (
+                  <span className={`absolute bottom-1 w-1 h-1 rounded-full ${hasSessions ? 'bg-slate-300' : 'bg-blue-400'}`} />
+                ) : null}
               </motion.button>
             )
           })}
@@ -80,20 +88,46 @@ export function TimetableScreen() {
           variants={stagger}
           initial="initial"
           animate="animate"
-          className="px-4 py-4 space-y-3"
+          className="px-4 py-4 space-y-4"
         >
-          {sessions.length === 0 ? (
+          {/* 1. Classes / Lecture Sessions */}
+          {sessions.length > 0 && (
+            <div className="space-y-3">
+              {sessions.map((session) => (
+                <SessionCard
+                  key={session.id}
+                  session={session}
+                  isCurrentSession={
+                    selectedOffset === 0 && session.id === schedule.currentSession?.id
+                  }
+                />
+              ))}
+            </div>
+          )}
+
+          {/* 2. Campus Events & Exams Section */}
+          {dayEvents.length > 0 && (
+            <div className="space-y-2.5 pt-1">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-extrabold text-secondary-text uppercase tracking-wider flex items-center gap-1.5">
+                  <span>📌</span>
+                  <span>Campus Events & Exams</span>
+                </h4>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
+                  {dayEvents.length} event{dayEvents.length > 1 ? 's' : ''}
+                </span>
+              </div>
+              <div className="space-y-2.5">
+                {dayEvents.map((ev) => (
+                  <EventCard key={ev.id} event={ev} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 3. Empty Day only if neither classes nor events exist */}
+          {sessions.length === 0 && dayEvents.length === 0 && (
             <EmptyDay />
-          ) : (
-            sessions.map((session) => (
-              <SessionCard
-                key={session.id}
-                session={session}
-                isCurrentSession={
-                  selectedOffset === 0 && session.id === schedule.currentSession?.id
-                }
-              />
-            ))
           )}
         </motion.div>
       )}
@@ -202,6 +236,63 @@ function SessionCard({
   )
 }
 
+function EventCard({ event }: { event: CampusEvent }) {
+  const formattedType = event.type.replace(/_/g, ' ')
+
+  return (
+    <motion.div
+      variants={fadeRise}
+      className="p-4 bg-blue-50/70 border border-blue-200/70 rounded-2xl space-y-2 shadow-2xs hover:border-blue-300 transition-all"
+    >
+      <div className="flex items-start justify-between gap-2">
+        <h4 className="text-sm font-bold text-blue-950 flex items-center gap-1.5">
+          <span>📌</span>
+          <span>{event.title}</span>
+        </h4>
+        <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-200/60 flex-shrink-0">
+          {formattedType}
+        </span>
+      </div>
+
+      <div className="flex items-center gap-3 text-xs text-blue-800/90 flex-wrap font-medium">
+        {event.start_time && (
+          <span className="font-mono flex items-center gap-1">
+            <span>⏰</span>
+            <span>
+              {formatTime12(event.start_time)}
+              {event.end_time ? ` – ${formatTime12(event.end_time)}` : ''}
+            </span>
+          </span>
+        )}
+        {event.venue && (
+          <span className="flex items-center gap-1">
+            <span>📍</span>
+            <span>{event.venue}</span>
+          </span>
+        )}
+        {event.company && (
+          <span className="flex items-center gap-1">
+            <span>💼</span>
+            <span>{event.company}</span>
+          </span>
+        )}
+      </div>
+
+      {event.description && (
+        <p className="text-xs text-blue-900/80 leading-relaxed bg-white/60 p-2.5 rounded-xl border border-blue-100">
+          {event.description}
+        </p>
+      )}
+
+      {event.note && (
+        <p className="text-[11px] text-blue-800 italic">
+          📝 {event.note}
+        </p>
+      )}
+    </motion.div>
+  )
+}
+
 function EmptyDay() {
   return (
     <motion.div
@@ -210,7 +301,7 @@ function EmptyDay() {
     >
       <div className="text-4xl mb-3">🎉</div>
       <h3 className="text-lg font-semibold text-primary-text">Free day!</h3>
-      <p className="text-sm text-secondary-text mt-1">No classes scheduled for this day.</p>
+      <p className="text-sm text-secondary-text mt-1">No classes or events scheduled for this day.</p>
     </motion.div>
   )
 }
