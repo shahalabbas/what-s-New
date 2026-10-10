@@ -75,8 +75,8 @@ export function LoginScreen({ onLogin, onSimulateEmailLogin, domainError }: Logi
     },
     {
       icon: '💼',
-      title: 'Interview Hub',
-      desc: 'Peer experiences, case interview questions & tips',
+      title: 'Placement Hub',
+      desc: 'Campus job openings, Superset deadlines & stage tracking',
       color: 'from-purple-500/10 to-pink-500/5',
       border: 'border-purple-500/10',
     },

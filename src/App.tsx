@@ -9,7 +9,6 @@ import { Dashboard } from './features/dashboard/Dashboard'
 import { TimetableScreen } from './features/timetable/TimetableScreen'
 import { MessScreen } from './features/mess/MessScreen'
 import { ProjectsScreen } from './features/projects/ProjectsScreen'
-import { InterviewsScreen } from './features/interviews/InterviewsScreen'
 import { AdminScreen } from './features/admin/AdminScreen'
 
 const FEATURE_ASK = import.meta.env.VITE_FEATURE_ASK === 'true'
@@ -81,7 +80,6 @@ export function App() {
         <Route path="/timetable" element={<TimetableScreen />} />
         <Route path="/mess" element={<MessScreen />} />
         <Route path="/projects" element={<ProjectsScreen />} />
-        <Route path="/interviews" element={<InterviewsScreen />} />
         {isAdmin && <Route path="/admin" element={<AdminScreen />} />}
         {FEATURE_ASK && <Route path="/ask" element={<AskPlaceholder />} />}
       </Routes>

@@ -5,7 +5,6 @@ import { useAuth } from '../../hooks/useAuth'
 import { useSchedule } from '../../hooks/useSchedule'
 import { useMessMenu } from '../../hooks/useMessMenu'
 import { useProjects } from '../../hooks/useProjects'
-import { useInterviews } from '../../hooks/useInterviews'
 import { useNow } from '../../hooks/useNow'
 import {
   formatTime12,
@@ -20,7 +19,7 @@ import {
 } from '../../lib/timeUtils'
 import { BottomSheet } from '../../components/BottomSheet'
 import { PlacementDeadlineWidget } from './PlacementDeadlineWidget'
-import type { MealType, Project, ProjectType, InterviewSubmission } from '../../types'
+import type { MealType, Project, ProjectType } from '../../types'
 import { MOCK_TERMS } from '../../lib/mockData'
 
 const MEAL_ICONS: Record<MealType, string> = {
@@ -42,7 +41,6 @@ export function Dashboard() {
   const schedule = useSchedule()
   const mess = useMessMenu()
   const projects = useProjects()
-  const interviews = useInterviews()
   const { user, profile, signOut } = useAuth()
   useNow()
 
@@ -79,7 +77,7 @@ export function Dashboard() {
     if (pullY > 45 && !isRefreshing) {
       setIsRefreshing(true)
       setPullY(45)
-      await Promise.all([schedule.refresh(), mess.refresh(), projects.refresh(), interviews.refresh()])
+      await Promise.all([schedule.refresh(), mess.refresh(), projects.refresh()])
       setIsRefreshing(false)
     }
     setPullY(0)
@@ -181,12 +179,6 @@ export function Dashboard() {
           projects={projects.upcoming}
           onSelectProject={(p) => setSelectedProject(p)}
           onViewAll={() => navigate('/projects')}
-        />
-
-        {/* 4. INTERVIEW INSIGHTS & EXPERIENCES */}
-        <DashboardInterviewsSection
-          submissions={interviews.submissions}
-          onViewAll={() => navigate('/interviews')}
         />
       </main>
 
@@ -1320,90 +1312,4 @@ function DashboardProjectsSection({
   )
 }
 
-// ═════════════════════════════════════════════════════════════════════════════
-// 3. DASHBOARD INTERVIEWS & PLACEMENTS HUB
-// ═════════════════════════════════════════════════════════════════════════════
 
-function DashboardInterviewsSection({
-  submissions,
-  onViewAll,
-}: {
-  submissions: InterviewSubmission[]
-  onViewAll: () => void
-}) {
-  const recentSubmissions = submissions.slice(0, 2)
-
-  return (
-    <section className="bg-white rounded-[26px] border border-slate-100 shadow-2xs p-4.5 space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-sm">💬</span>
-            <h2 className="text-xs font-extrabold text-slate-400 tracking-wider uppercase">
-              Interview Insights
-            </h2>
-            {submissions.length > 0 && (
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600">
-                {submissions.length} shared
-              </span>
-            )}
-          </div>
-          <button
-            type="button"
-            onClick={onViewAll}
-            className="text-xs font-bold text-accent hover:opacity-80 transition-opacity flex items-center gap-0.5"
-          >
-            <span>View all</span>
-            <span>→</span>
-          </button>
-        </div>
-
-        {recentSubmissions.length > 0 ? (
-          <div className="space-y-2.5">
-            {recentSubmissions.map((sub) => (
-              <motion.div
-                key={sub.id}
-                whileTap={{ scale: 0.98 }}
-                onClick={onViewAll}
-                className="p-3 rounded-2xl bg-surface/70 hover:bg-surface border border-border/80 cursor-pointer transition-all space-y-1.5"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-bold text-primary-text truncate">
-                    {sub.company}
-                  </span>
-                  {sub.outcome && (
-                    <span
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full capitalize ${
-                        sub.outcome.toLowerCase().includes('select') || sub.outcome.toLowerCase().includes('offer')
-                          ? 'bg-emerald-50 text-emerald-700'
-                          : 'bg-blue-50 text-blue-700'
-                      }`}
-                    >
-                      {sub.outcome}
-                    </span>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-1.5 text-[11px] text-secondary-text">
-                  <span className="font-semibold text-primary-text">{sub.role}</span>
-                  {sub.round_type && <span>· {sub.round_type}</span>}
-                </div>
-
-                {(sub.tips || sub.questions) && (
-                  <p className="text-[11px] text-slate-600 line-clamp-1 italic bg-white/70 px-2 py-1 rounded-lg border border-border/40">
-                    "{sub.tips || sub.questions}"
-                  </p>
-                )}
-              </motion.div>
-            ))}
-          </div>
-        ) : (
-          <div className="py-4 text-center bg-surface/50 rounded-2xl border border-dashed border-border space-y-1">
-            <p className="text-xs font-semibold text-primary-text">Prepare for upcoming placements</p>
-            <p className="text-[11px] text-secondary-text">
-              View round formats, questions, and preparation tips from seniors and peers.
-            </p>
-          </div>
-        )}
-      </section>
-  )
-}

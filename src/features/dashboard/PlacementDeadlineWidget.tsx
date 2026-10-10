@@ -381,37 +381,6 @@ export function PlacementDetailModal({
               </div>
             </div>
           )}
-
-          {/* Linked Interview Experiences */}
-          {opportunity.experiences && opportunity.experiences.length > 0 && (
-            <div>
-              <h4 className="text-xs font-bold text-secondary-text uppercase tracking-wider mb-2">
-                Batch Interview Experiences ({opportunity.experiences.length})
-              </h4>
-              <div className="space-y-2">
-                {opportunity.experiences.map((exp) => (
-                  <div key={exp.id} className="p-3.5 rounded-xl bg-surface border border-border text-xs">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="font-bold text-primary-text">{exp.round_type || 'Interview Round'}</span>
-                      <span className="text-[10px] font-semibold text-emerald-600">{exp.outcome || ''}</span>
-                    </div>
-                    {exp.questions && (
-                      <p className="text-secondary-text mt-1 text-[11px] line-clamp-2">
-                        <span className="font-semibold text-primary-text">Questions: </span>
-                        {exp.questions}
-                      </p>
-                    )}
-                    {exp.tips && (
-                      <p className="text-secondary-text mt-1 text-[11px] line-clamp-2">
-                        <span className="font-semibold text-primary-text">Tips: </span>
-                        {exp.tips}
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       </motion.div>
     </div>

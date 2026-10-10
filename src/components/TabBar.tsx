@@ -36,13 +36,6 @@ const FolderIcon = ({ filled }: { filled: boolean }) => (
   </svg>
 )
 
-const BriefcaseIcon = ({ filled }: { filled: boolean }) => (
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-    <rect x="2" y="8" width="20" height="13" rx="3" fill={filled ? '#0A84FF' : 'none'} stroke={filled ? '#0A84FF' : '#6E6E73'} strokeWidth="1.8" />
-    <path d="M16 8V6C16 4.9 15.1 4 14 4H10C8.9 4 8 4.9 8 6V8" stroke={filled ? '#0A84FF' : '#6E6E73'} strokeWidth="1.8" strokeLinecap="round" />
-  </svg>
-)
-
 const GearIcon = ({ filled }: { filled: boolean }) => (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
     <circle cx="12" cy="12" r="3" stroke={filled ? '#0A84FF' : '#6E6E73'} strokeWidth="1.8" fill={filled ? '#0A84FF' : 'none'} />
@@ -55,7 +48,6 @@ const tabs = [
   { path: '/timetable', label: 'Schedule', Icon: CalendarIcon },
   { path: '/mess', label: 'Mess', Icon: ForkIcon },
   { path: '/projects', label: 'Projects', Icon: FolderIcon },
-  { path: '/interviews', label: 'Interviews', Icon: BriefcaseIcon },
 ]
 
 interface TabBarProps {
