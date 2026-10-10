@@ -695,6 +695,31 @@ export function Dashboard() {
           <motion.button
             whileTap={{ scale: 0.98 }}
             onClick={async () => {
+              try {
+                if ('serviceWorker' in navigator) {
+                  const registrations = await navigator.serviceWorker.getRegistrations()
+                  for (const reg of registrations) {
+                    await reg.unregister()
+                  }
+                }
+                if ('caches' in window) {
+                  const keys = await caches.keys()
+                  for (const key of keys) {
+                    await caches.delete(key)
+                  }
+                }
+              } catch {}
+              window.location.reload()
+            }}
+            className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl text-xs font-bold transition-colors flex items-center justify-center gap-2"
+          >
+            <span>🔄</span>
+            <span>Force Update App & Clear Cache</span>
+          </motion.button>
+
+          <motion.button
+            whileTap={{ scale: 0.98 }}
+            onClick={async () => {
               setShowProfileSheet(false)
               await signOut()
             }}
