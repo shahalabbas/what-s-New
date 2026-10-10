@@ -687,6 +687,36 @@ export function Dashboard() {
 // 1. UP NEXT CARD (Left Column - strictly DB bound)
 // ═════════════════════════════════════════════════════════════════════════════
 
+function getEventTiming(e: any): { startTime?: string; endTime?: string } {
+  if (e.start_time) {
+    return {
+      startTime: e.start_time.slice(0, 5),
+      endTime: e.end_time ? e.end_time.slice(0, 5) : undefined,
+    }
+  }
+  if (e.start_at) {
+    try {
+      const d = new Date(e.start_at)
+      return { startTime: formatIST(d, 'HH:mm') }
+    } catch {}
+  }
+  // Try extracting from title e.g. "Workshop : ML Ops 3.00 - 5.00" or "10:30 AM" or "3.00 PM"
+  if (e.title) {
+    const match = e.title.match(/(\d{1,2})[:.](\d{2})\s*(AM|PM)?/i)
+    if (match) {
+      let hours = parseInt(match[1], 10)
+      const mins = match[2]
+      const ampm = match[3]?.toUpperCase()
+      if (ampm === 'PM' && hours < 12) hours += 12
+      if (ampm === 'AM' && hours === 12) hours = 0
+      if (!ampm && hours >= 1 && hours <= 7) hours += 12
+      const formatted = `${String(hours).padStart(2, '0')}:${mins}`
+      return { startTime: formatted }
+    }
+  }
+  return {}
+}
+
 function getUpNextScheduleItem(
   schedule: ReturnType<typeof useSchedule>
 ): {
@@ -702,18 +732,20 @@ function getUpNextScheduleItem(
   const today = todayIST()
   const curMins = timeToMinutes(currentTime)
 
-  // 1. Check if an event is active right now
+  // 1. Check if a timed event is live right now
   const liveEvent = events.find((e) => {
     if (e.date !== today || e.status === 'cancelled') return false
-    if (!e.start_time || !e.end_time) return false
-    const start = timeToMinutes(e.start_time)
-    const end = timeToMinutes(e.end_time)
+    const timing = getEventTiming(e)
+    if (!timing.startTime) return false
+    const start = timeToMinutes(timing.startTime)
+    const end = timing.endTime ? timeToMinutes(timing.endTime) : start + 120
     return curMins >= start && curMins < end
   })
 
   if (liveEvent) {
+    const timing = getEventTiming(liveEvent)
     const formattedType = liveEvent.type.replace(/_/g, ' ')
-    const timeDisplay = formatTime12(liveEvent.start_time!).replace(/\s?(AM|PM)/i, '')
+    const timeDisplay = timing.startTime ? formatTime12(timing.startTime).replace(/\s?(AM|PM)/i, '') : ''
     return {
       isEvent: true,
       isLive: true,
@@ -744,47 +776,53 @@ function getUpNextScheduleItem(
     }
   }
 
-  // 3. Upcoming today: compare next upcoming event today vs next class today
-  const todayUpcomingEvents = events
+  // 3. Upcoming today: compare next upcoming timed event today vs next class today
+  const todayTimedEvents = events
+    .map((e) => ({ event: e, timing: getEventTiming(e) }))
     .filter(
-      (e) =>
-        e.date === today &&
-        e.status !== 'cancelled' &&
-        e.start_time &&
-        timeToMinutes(e.start_time) > curMins
+      (item) =>
+        item.event.date === today &&
+        item.event.status !== 'cancelled' &&
+        item.timing.startTime &&
+        timeToMinutes(item.timing.startTime) > curMins
     )
-    .sort((a, b) => timeToMinutes(a.start_time!) - timeToMinutes(b.start_time!))
-  const nextEventToday = todayUpcomingEvents[0]
+    .sort((a, b) => timeToMinutes(a.timing.startTime!) - timeToMinutes(b.timing.startTime!))
 
-  if (nextEventToday && nextSession) {
-    const eventMins = timeToMinutes(nextEventToday.start_time!)
+  const nextTimedEventToday = todayTimedEvents[0]
+
+  if (nextTimedEventToday && nextSession) {
+    const eventMins = timeToMinutes(nextTimedEventToday.timing.startTime!)
     const classMins = timeToMinutes(nextSession.start_time)
     if (eventMins <= classMins) {
       const diffMins = Math.max(0, eventMins - curMins)
       const diffText = diffMins > 60 ? `in ${Math.floor(diffMins / 60)}h ${diffMins % 60}m` : `in ${diffMins}m`
-      const formattedType = nextEventToday.type.replace(/_/g, ' ')
+      const formattedType = nextTimedEventToday.event.type.replace(/_/g, ' ')
       return {
         isEvent: true,
         isLive: false,
-        timeDisplay: formatTime12(nextEventToday.start_time!).replace(/\s?(AM|PM)/i, ''),
-        titleDisplay: nextEventToday.title,
-        subtitle: nextEventToday.venue ? `📍 ${nextEventToday.venue}` : (nextEventToday.company || formattedType),
-        pillText: `${diffText} · Event`,
+        timeDisplay: formatTime12(nextTimedEventToday.timing.startTime!).replace(/\s?(AM|PM)/i, ''),
+        titleDisplay: nextTimedEventToday.event.title,
+        subtitle: nextTimedEventToday.event.venue
+          ? `📍 ${nextTimedEventToday.event.venue}`
+          : (nextTimedEventToday.event.company || formattedType),
+        pillText: `${diffText} · ${formattedType}`,
         eventTypeBadge: formattedType,
       }
     }
-  } else if (nextEventToday && !nextSession) {
-    const eventMins = timeToMinutes(nextEventToday.start_time!)
+  } else if (nextTimedEventToday && !nextSession) {
+    const eventMins = timeToMinutes(nextTimedEventToday.timing.startTime!)
     const diffMins = Math.max(0, eventMins - curMins)
     const diffText = diffMins > 60 ? `in ${Math.floor(diffMins / 60)}h ${diffMins % 60}m` : `in ${diffMins}m`
-    const formattedType = nextEventToday.type.replace(/_/g, ' ')
+    const formattedType = nextTimedEventToday.event.type.replace(/_/g, ' ')
     return {
       isEvent: true,
       isLive: false,
-      timeDisplay: formatTime12(nextEventToday.start_time!).replace(/\s?(AM|PM)/i, ''),
-      titleDisplay: nextEventToday.title,
-      subtitle: nextEventToday.venue ? `📍 ${nextEventToday.venue}` : (nextEventToday.company || formattedType),
-      pillText: `${diffText} · Event`,
+      timeDisplay: formatTime12(nextTimedEventToday.timing.startTime!).replace(/\s?(AM|PM)/i, ''),
+      titleDisplay: nextTimedEventToday.event.title,
+      subtitle: nextTimedEventToday.event.venue
+        ? `📍 ${nextTimedEventToday.event.venue}`
+        : (nextTimedEventToday.event.company || formattedType),
+      pillText: `${diffText} · ${formattedType}`,
       eventTypeBadge: formattedType,
     }
   }
@@ -811,24 +849,7 @@ function getUpNextScheduleItem(
     }
   }
 
-  // 4. All-day event today
-  const allDayEventToday = events.find(
-    (e) => e.date === today && e.status !== 'cancelled' && (e.all_day || !e.start_time)
-  )
-  if (allDayEventToday) {
-    const formattedType = allDayEventToday.type.replace(/_/g, ' ')
-    return {
-      isEvent: true,
-      isLive: false,
-      timeDisplay: 'All Day',
-      titleDisplay: allDayEventToday.title,
-      subtitle: allDayEventToday.venue ? `📍 ${allDayEventToday.venue}` : formattedType,
-      pillText: 'Today · Event',
-      eventTypeBadge: formattedType,
-    }
-  }
-
-  // 5. Future day check (across next 14 days)
+  // 4. Future day check (across next 14 days): Look for next scheduled class or timed event
   const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
   let earliestFutureItem: {
     offset: number
@@ -836,6 +857,7 @@ function getUpNextScheduleItem(
     dayLabel: string
     classSession?: any
     event?: any
+    timing?: { startTime?: string; endTime?: string }
   } | null = null
 
   for (let offset = 1; offset <= 14; offset++) {
@@ -844,21 +866,23 @@ function getUpNextScheduleItem(
     const dayLabel = offset === 1 ? 'Tomorrow' : DAY_NAMES[dayOfWeek]
 
     const dayClasses = classSessions.filter((s) => s.date === targetDate && s.status !== 'cancelled')
-    const dayEvs = events.filter((e) => e.date === targetDate && e.status !== 'cancelled')
+    const dayTimedEvs = events
+      .map((e) => ({ event: e, timing: getEventTiming(e) }))
+      .filter((item) => item.event.date === targetDate && item.event.status !== 'cancelled' && item.timing.startTime)
 
-    if (dayClasses.length > 0 || dayEvs.length > 0) {
-      if (dayEvs.length > 0 && dayClasses.length > 0) {
+    if (dayClasses.length > 0 || dayTimedEvs.length > 0) {
+      if (dayTimedEvs.length > 0 && dayClasses.length > 0) {
         const firstClass = dayClasses[0]
-        const firstEv = dayEvs[0]
+        const firstEv = dayTimedEvs[0]
         const classMins = timeToMinutes(firstClass.start_time)
-        const evMins = firstEv.start_time ? timeToMinutes(firstEv.start_time) : 0
-        if (firstEv.start_time && evMins <= classMins) {
-          earliestFutureItem = { offset, dateStr: targetDate, dayLabel, event: firstEv }
+        const evMins = timeToMinutes(firstEv.timing.startTime!)
+        if (evMins <= classMins) {
+          earliestFutureItem = { offset, dateStr: targetDate, dayLabel, event: firstEv.event, timing: firstEv.timing }
         } else {
           earliestFutureItem = { offset, dateStr: targetDate, dayLabel, classSession: firstClass }
         }
-      } else if (dayEvs.length > 0) {
-        earliestFutureItem = { offset, dateStr: targetDate, dayLabel, event: dayEvs[0] }
+      } else if (dayTimedEvs.length > 0) {
+        earliestFutureItem = { offset, dateStr: targetDate, dayLabel, event: dayTimedEvs[0].event, timing: dayTimedEvs[0].timing }
       } else {
         earliestFutureItem = { offset, dateStr: targetDate, dayLabel, classSession: dayClasses[0] }
       }
@@ -866,17 +890,17 @@ function getUpNextScheduleItem(
     }
   }
 
-  if (earliestFutureItem?.event) {
+  if (earliestFutureItem?.event && earliestFutureItem.timing?.startTime) {
     const ev = earliestFutureItem.event
     const formattedType = ev.type.replace(/_/g, ' ')
-    const timeDisplay = ev.start_time ? formatTime12(ev.start_time).replace(/\s?(AM|PM)/i, '') : 'All Day'
+    const timeDisplay = formatTime12(earliestFutureItem.timing.startTime).replace(/\s?(AM|PM)/i, '')
     return {
       isEvent: true,
       isLive: false,
       timeDisplay,
       titleDisplay: ev.title,
       subtitle: ev.venue ? `📍 ${ev.venue}` : (ev.company || formattedType),
-      pillText: `${earliestFutureItem.dayLabel} · Event`,
+      pillText: `${earliestFutureItem.dayLabel} · ${formattedType}`,
       eventTypeBadge: formattedType,
     }
   }
@@ -898,6 +922,7 @@ function getUpNextScheduleItem(
     }
   }
 
+  // Fallback to futureDayInfo
   if (extendedState.futureDayInfo?.session) {
     const s = extendedState.futureDayInfo.session
     const timeDisplay = formatTime12(s.start_time).replace(/\s?(AM|PM)/i, '')
