@@ -51,11 +51,11 @@ export function useProjects() {
   })
 
   const filtered = filter === 'all'
-    ? projects
-    : projects.filter((p) => p.type === filter)
+    ? projects.filter((p) => Boolean(p.course_id && p.course_id.trim() !== ''))
+    : projects.filter((p) => p.type === filter && Boolean(p.course_id && p.course_id.trim() !== ''))
 
   const upcoming = projects
-    .filter((p) => new Date(p.deadline) > new Date())
+    .filter((p) => Boolean(p.course_id && p.course_id.trim() !== '') && new Date(p.deadline) > new Date())
     .sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime())
 
   return {

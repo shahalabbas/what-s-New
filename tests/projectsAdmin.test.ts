@@ -76,14 +76,14 @@ Contact TA if you face any issues.`
     expect(types).toContain('end-term')
   })
 
-  it('correctly maps cohort courses for the subject dropdown', () => {
+  it('correctly maps cohort courses for the subject dropdown and requires course selection', () => {
     const dropdownOptions = [
-      { id: '', label: 'Other / None (Campus-wide)' },
+      { id: '', label: '-- Select Subject / Course (Required) --' },
       ...mockCourses.map((c) => ({ id: c.id, label: `${c.code} · ${c.name}` })),
     ]
 
     expect(dropdownOptions).toHaveLength(3)
-    expect(dropdownOptions[0].label).toBe('Other / None (Campus-wide)')
+    expect(dropdownOptions[0].label).toBe('-- Select Subject / Course (Required) --')
     expect(dropdownOptions[1].label).toBe('DSO 503 · Data Science for Business')
     expect(dropdownOptions[2].label).toBe('MKT 501 · Marketing Management')
   })

@@ -119,9 +119,8 @@ export function ProjectsAdmin({ courses = [] }: { courses?: Course[] }) {
       return
     }
 
-    // Deadline validation: must be in future (for new projects)
-    if (modalData.mode === 'add' && new Date(deadlineIso).getTime() <= Date.now()) {
-      toast.error('Deadline must be in the future.')
+    if (!form.course_id || !form.course_id.trim()) {
+      toast.error('Associated Subject / Course is required.')
       return
     }
 
@@ -385,11 +384,12 @@ export function ProjectsAdmin({ courses = [] }: { courses?: Course[] }) {
                     Associated Course *
                   </label>
                   <select
-                    className="input text-xs"
+                    className="input text-xs font-semibold"
+                    required
                     value={form.course_id}
                     onChange={(e) => setForm({ ...form, course_id: e.target.value })}
                   >
-                    <option value="">Other / None (Campus-wide)</option>
+                    <option value="">-- Select Subject / Course (Required) --</option>
                     {courses.map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.code} · {c.name}

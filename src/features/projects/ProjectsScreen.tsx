@@ -652,8 +652,8 @@ function ProjectFormModal({
     }
 
     // Past deadline validation
-    if (new Date(isoDeadline).getTime() <= Date.now()) {
-      setErrorMsg('Deadline cannot be in the past')
+    if (!courseId || !courseId.trim()) {
+      setErrorMsg('Subject (Course) is required')
       return
     }
 
@@ -662,7 +662,7 @@ function ProjectFormModal({
       title: title.trim(),
       description: description.trim(),
       type,
-      course_id: courseId || null,
+      course_id: courseId,
       deadline: isoDeadline,
       submission_link: submissionLink.trim() || null,
       group_size: Number(groupSize) || 1,
@@ -703,14 +703,15 @@ function ProjectFormModal({
           {/* Subject Dropdown */}
           <div>
             <label className="block text-xs font-semibold text-secondary-text mb-1">
-              Subject (Course)
+              Subject (Course) *
             </label>
             <select
               value={courseId}
+              required
               onChange={(e) => setCourseId(e.target.value)}
-              className="input text-xs"
+              className="input text-xs font-semibold"
             >
-              <option value="">Other / None (Campus-wide)</option>
+              <option value="">-- Select Subject / Course (Required) --</option>
               {courses.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.code} · {c.name}
