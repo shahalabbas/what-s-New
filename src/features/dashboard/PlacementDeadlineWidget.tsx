@@ -306,7 +306,7 @@ export function PlacementDetailModal({
           <div>
             <div className="flex items-center gap-2 mb-1 flex-wrap">
               <span className="text-xs font-bold uppercase tracking-wider text-secondary-text">
-                {opportunity.source === 'superset' ? 'Superset Job Profile' : 'Campus Opportunity'}
+                {opportunity.source === 'superset' ? 'Job Profile' : 'Campus Opportunity'}
               </span>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-accent/10 text-accent capitalize">
                 {opportunity.stage.replace(/_/g, ' ')}
@@ -397,11 +397,11 @@ export function PlacementDetailModal({
                 rel="noopener noreferrer"
                 className="w-full py-3 px-4 rounded-2xl bg-accent text-white font-bold text-sm flex items-center justify-center gap-2 shadow-sm hover:opacity-95 transition-all"
               >
-                <span>Apply on Superset</span>
+                <span>Apply</span>
                 <span>↗</span>
               </a>
               <p className="text-[11px] text-center text-secondary-text mt-1.5">
-                Opens external Superset job profile in a new browser tab.
+                Opens application link in a new browser tab.
               </p>
             </div>
           )}

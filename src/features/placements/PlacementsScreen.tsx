@@ -296,7 +296,7 @@ function PlacementCard({
               rel="noopener noreferrer"
               className="px-2.5 py-1 rounded-xl text-xs font-bold bg-accent text-white hover:opacity-90 transition-all flex items-center gap-0.5 shadow-2xs"
             >
-              <span>Superset</span>
+              <span>Apply</span>
               <span>↗</span>
             </a>
           )}
