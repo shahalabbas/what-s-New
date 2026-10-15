@@ -58,23 +58,20 @@ export function PlacementDeadlineWidget({
 
   if (sortedOpportunities.length === 0) {
     return (
-      <section className="bg-white rounded-[26px] border border-slate-100 shadow-2xs p-4.5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-base">💼</span>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-secondary-text">
-              Placement Opportunities
-            </h3>
-          </div>
+      <div className="space-y-2 pt-1">
+        <div className="flex items-center justify-between px-1">
+          <h2 className="text-base font-bold text-slate-900 tracking-tight">
+            Placement Opportunities
+          </h2>
           <div className="flex items-center gap-1.5">
             {onSwapOrder && (
               <button
                 type="button"
                 onClick={onSwapOrder}
                 title={isAtBottom ? 'Move Placements to top' : 'Pull Placements to bottom (I am placed)'}
-                className="px-2 py-0.5 rounded-full bg-slate-100 hover:bg-slate-200 active:scale-95 text-[10px] font-bold text-slate-600 transition-all flex items-center gap-0.5 shadow-2xs border border-slate-200/60"
+                className="px-2.5 py-1 rounded-full bg-white hover:bg-slate-50 text-[10px] font-bold text-slate-600 transition-all flex items-center gap-1 shadow-2xs border border-slate-200"
               >
-                <span>{isAtBottom ? '↑ Placed' : '↓ Placed'}</span>
+                <span>{isAtBottom ? '↑ Placements' : '↓ Placed'}</span>
               </button>
             )}
             <button
@@ -87,30 +84,27 @@ export function PlacementDeadlineWidget({
             </button>
           </div>
         </div>
-        <div className="py-6 text-center">
-          <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center mx-auto text-slate-400 mb-2">
+        <div className="py-7 text-center rounded-[22px] bg-white border border-slate-200/80 shadow-bento">
+          <div className="w-9 h-9 rounded-full bg-slate-50 flex items-center justify-center mx-auto text-slate-400 mb-2">
             ✨
           </div>
-          <p className="text-sm font-semibold text-primary-text">No open applications right now</p>
-          <p className="text-xs text-secondary-text mt-0.5">All applications are either completed or closed.</p>
+          <p className="text-xs font-bold text-slate-800">No open applications right now</p>
+          <p className="text-[11px] text-slate-500 mt-0.5">All applications are either completed or closed.</p>
         </div>
-      </section>
+      </div>
     )
   }
 
   return (
     <>
-      <section className="bg-white rounded-[24px] border border-slate-200/80 shadow-bento p-4 space-y-2.5">
-        {/* Section Header with roller controls and layout swap */}
-        <div className="flex items-center justify-between">
+      <div className="space-y-2.5 pt-1">
+        {/* Clean Section Header (No awkward icon, no all-caps, no nested box) */}
+        <div className="flex items-center justify-between px-1">
           <div className="flex items-center gap-2">
-            <svg className="w-4 h-4 text-slate-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-            </svg>
-            <h2 className="text-[11px] font-black uppercase tracking-wider text-slate-400">
+            <h2 className="text-base font-bold text-slate-900 tracking-tight">
               Placement Opportunities
             </h2>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200/60">
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200/70 text-slate-700">
               {sortedOpportunities.length} active
             </span>
           </div>
@@ -122,9 +116,9 @@ export function PlacementDeadlineWidget({
                 type="button"
                 onClick={onSwapOrder}
                 title={isAtBottom ? 'Move Placements above Projects' : 'Pull Placements to bottom (I am placed)'}
-                className="px-2 py-0.5 rounded-full bg-slate-100 hover:bg-slate-200 active:scale-95 text-[10px] font-bold text-slate-600 transition-all flex items-center gap-0.5 shadow-2xs border border-slate-200/60"
+                className="px-2.5 py-1 rounded-full bg-white hover:bg-slate-50 text-[10px] font-bold text-slate-600 transition-all flex items-center gap-1 shadow-2xs border border-slate-200"
               >
-                <span>{isAtBottom ? '↑ Placed' : '↓ Placed'}</span>
+                <span>{isAtBottom ? '↑ Placements' : '↓ Placed'}</span>
               </button>
             )}
 
@@ -136,7 +130,7 @@ export function PlacementDeadlineWidget({
                   onClick={handleScrollUp}
                   aria-label="Roll to previous placement"
                   title="Previous"
-                  className="w-6 h-6 rounded-full bg-slate-100 hover:bg-slate-200 active:scale-95 flex items-center justify-center text-[10px] text-slate-600 font-bold transition-all shadow-2xs"
+                  className="w-6 h-6 rounded-full bg-white border border-slate-200 hover:bg-slate-50 active:scale-95 flex items-center justify-center text-[10px] text-slate-600 font-bold transition-all shadow-2xs"
                 >
                   ▲
                 </button>
@@ -145,7 +139,7 @@ export function PlacementDeadlineWidget({
                   onClick={handleScrollDown}
                   aria-label="Roll to next placement"
                   title="Next"
-                  className="w-6 h-6 rounded-full bg-slate-100 hover:bg-slate-200 active:scale-95 flex items-center justify-center text-[10px] text-slate-600 font-bold transition-all shadow-2xs"
+                  className="w-6 h-6 rounded-full bg-white border border-slate-200 hover:bg-slate-50 active:scale-95 flex items-center justify-center text-[10px] text-slate-600 font-bold transition-all shadow-2xs"
                 >
                   ▼
                 </button>
@@ -163,11 +157,11 @@ export function PlacementDeadlineWidget({
           </div>
         </div>
 
-        {/* 2-Item Fixed Roller Container */}
+        {/* 2-Item Fixed Roller Container of Direct Cards */}
         <div
           ref={scrollRef}
-          className={`space-y-2 overflow-y-auto snap-y snap-mandatory scroll-smooth pr-0.5 scrollbar-none overscroll-contain ${
-            sortedOpportunities.length > 1 ? 'max-h-[200px]' : ''
+          className={`space-y-2.5 overflow-y-auto snap-y snap-mandatory scroll-smooth pr-0.5 scrollbar-none overscroll-contain ${
+            sortedOpportunities.length > 1 ? 'max-h-[228px]' : ''
           }`}
           style={{ scrollSnapType: 'y mandatory' }}
         >
@@ -180,23 +174,19 @@ export function PlacementDeadlineWidget({
 
             const urgencyStyles = {
               normal: {
-                cardBg: 'bg-slate-50/70 hover:bg-slate-50 border-slate-200/70',
-                badgeBg: 'bg-white text-slate-800 border border-slate-200/80 shadow-2xs',
+                badgeBg: 'bg-slate-100 text-slate-700 border border-slate-200/80 shadow-2xs',
                 dotColor: 'bg-slate-400',
               },
               warm: {
-                cardBg: 'bg-amber-50/40 hover:bg-amber-50/70 border-amber-200/80',
-                badgeBg: 'bg-amber-100/80 text-amber-800 border border-amber-300/60 shadow-2xs',
+                badgeBg: 'bg-amber-50 text-amber-800 border border-amber-200/80 shadow-2xs',
                 dotColor: 'bg-amber-500',
               },
               urgent: {
-                cardBg: 'bg-rose-50/40 hover:bg-rose-50/70 border-rose-200/80',
-                badgeBg: 'bg-rose-100 text-rose-800 border border-rose-300/60 shadow-2xs animate-pulse',
+                badgeBg: 'bg-rose-50 text-rose-700 border border-rose-200/80 shadow-2xs animate-pulse',
                 dotColor: 'bg-rose-500',
               },
               closed: {
-                cardBg: 'bg-slate-50/40 border-slate-200 opacity-70',
-                badgeBg: 'bg-slate-200 text-slate-600 border border-slate-300/60',
+                badgeBg: 'bg-slate-100 text-slate-500 border border-slate-200/60',
                 dotColor: 'bg-slate-400',
               },
             }[countdown.urgency]
@@ -212,60 +202,68 @@ export function PlacementDeadlineWidget({
                   if (onOpenDetail) onOpenDetail(opp)
                   else setSelectedOpp(opp)
                 }}
-                className={`min-h-[96px] max-h-[96px] h-[96px] snap-start rounded-2xl border ${urgencyStyles.cardBg} p-3 cursor-pointer flex flex-col justify-between transition-all hover:shadow-2xs select-none`}
+                className="min-h-[104px] max-h-[104px] h-[104px] snap-start rounded-[22px] bg-white border border-slate-200/80 shadow-bento hover:border-slate-300 p-3.5 cursor-pointer flex flex-col justify-between transition-all select-none"
               >
-                {/* Row 1: Company Monogram + Name + Tags + Countdown */}
+                {/* Row 1: Company Monogram + Name + Tags + Countdown Chip */}
                 <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 min-w-0 flex-1">
-                    {/* Monogram */}
-                    <div className="w-6 h-6 rounded-lg bg-white border border-slate-200/80 shadow-2xs flex items-center justify-center text-[11px] font-black text-slate-700 flex-shrink-0">
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    {/* Monogram Badge */}
+                    <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-indigo-500/10 to-indigo-500/20 border border-indigo-200/60 flex items-center justify-center text-xs font-black text-indigo-700 flex-shrink-0">
                       {companyInitial}
                     </div>
 
-                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                      <h4 className="text-xs font-bold text-slate-900 tracking-tight truncate">
-                        {opp.company}
-                      </h4>
-                      {opp.additional_details && opp.additional_details.length > 0 && (
-                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-white text-slate-600 border border-slate-200/60 truncate max-w-[120px]">
-                          {opp.additional_details[0].value}
-                        </span>
-                      )}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <h4 className="text-sm font-bold text-slate-900 tracking-tight truncate leading-tight">
+                          {opp.company}
+                        </h4>
+                        {opp.additional_details && opp.additional_details.length > 0 && (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200/60 truncate max-w-[100px]">
+                            {opp.additional_details[0].value}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] font-medium text-slate-500 truncate leading-tight mt-0.5" title={opp.role}>
+                        {opp.role}
+                      </p>
                     </div>
                   </div>
 
                   <span
-                    className={`flex-shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold tracking-tight flex items-center gap-1.5 ${urgencyStyles.badgeBg}`}
+                    className={`flex-shrink-0 px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-tight flex items-center gap-1.5 ${urgencyStyles.badgeBg}`}
                   >
                     <span className={`w-1.5 h-1.5 rounded-full ${urgencyStyles.dotColor}`} />
                     <span>{countdown.formatted}</span>
                   </span>
                 </div>
 
-                {/* Row 2: Role */}
-                <p className="text-[11px] font-medium text-slate-600 truncate leading-tight pl-8" title={opp.role}>
-                  {opp.role}
-                </p>
+                {/* Row 2: Deadline date + Direct Apply & Status Action */}
+                <div className="flex items-center justify-between gap-2 text-[11px] pt-1.5 border-t border-slate-100">
+                  <span className="text-slate-500 font-medium truncate">
+                    {opp.deadline_at ? `Closes ${formatPlacementDeadline(opp.deadline_at)}` : 'Open for applications'}
+                  </span>
 
-                {/* Row 3: Deadline + Mark Applied Action */}
-                <div className="flex items-center justify-between gap-2 text-[10px] pt-0.5 border-t border-slate-200/50">
-                  <div className="flex items-center gap-1 text-slate-500 truncate font-medium">
-                    <svg className="w-3 h-3 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    <span className="truncate">
-                      {opp.deadline_at ? formatPlacementDeadline(opp.deadline_at) : 'Open for applications'}
-                    </span>
-                  </div>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    {opp.apply_url && (
+                      <a
+                        href={opp.apply_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="px-2.5 py-1 rounded-xl text-[10px] font-bold bg-accent text-white hover:opacity-90 transition-all flex items-center gap-0.5 shadow-2xs"
+                      >
+                        <span>Apply</span>
+                        <span>↗</span>
+                      </a>
+                    )}
 
-                  <div className="flex items-center gap-1">
                     <motion.button
                       whileTap={{ scale: 0.92 }}
                       onClick={(e) => handleMarkApplied(e, opp.id)}
-                      className={`flex-shrink-0 px-2.5 py-0.5 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 shadow-2xs ${
+                      className={`px-2.5 py-1 rounded-xl text-[10px] font-bold transition-all flex items-center gap-1 shadow-2xs ${
                         isApplied
                           ? 'bg-emerald-600 text-white font-extrabold'
-                          : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200/60'
                       }`}
                     >
                       <span>✓</span>
@@ -277,7 +275,7 @@ export function PlacementDeadlineWidget({
             )
           })}
         </div>
-      </section>
+      </div>
 
       {/* Detail Modal if opened internally */}
       <AnimatePresence>

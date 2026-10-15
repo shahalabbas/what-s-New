@@ -900,7 +900,7 @@ function getUpNextScheduleItem(
       timeDisplay,
       titleDisplay: liveEvent.title,
       subtitle: liveEvent.venue ? `📍 ${liveEvent.venue}` : (liveEvent.company || formattedType),
-      pillText: 'LIVE NOW · Event',
+      pillText: liveEvent.venue ? `📍 ${liveEvent.venue}` : 'In Progress',
       eventTypeBadge: formattedType,
     }
   }
@@ -920,7 +920,9 @@ function getUpNextScheduleItem(
       subtitle: facultyName
         ? (facultyName.startsWith('Prof') ? facultyName : `Prof. ${facultyName}`)
         : (currentSession.room ? `CR: ${currentSession.room}` : ''),
-      pillText: `LIVE NOW · S${sessionNo}/${totalSessions}`,
+      pillText: currentSession.room
+        ? `${currentSession.room} · Session ${sessionNo}`
+        : `Session ${sessionNo} of ${totalSessions}`,
       sessionNo,
       totalSessions,
       room: currentSession.room,
@@ -1393,37 +1395,73 @@ function DashboardProjectsSection({
     scrollRef.current?.scrollBy({ top: 104, behavior: 'smooth' })
   }
 
-  return (
-    <section className="bg-white rounded-[24px] border border-slate-200/80 shadow-bento p-4 space-y-2.5">
-      {/* Section Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <svg className="w-4 h-4 text-slate-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-          </svg>
-          <h2 className="text-[11px] font-black text-slate-400 tracking-wider uppercase">
+  if (sortedProjects.length === 0) {
+    return (
+      <div className="space-y-2.5 pt-1">
+        <div className="flex items-center justify-between px-1">
+          <h2 className="text-base font-bold text-slate-900 tracking-tight">
             Projects & Deadlines
           </h2>
-          {sortedProjects.length > 0 && (
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200/60">
-              {sortedProjects.length} upcoming
-            </span>
-          )}
+          <div className="flex items-center gap-1.5">
+            {onSwapOrder && (
+              <button
+                type="button"
+                onClick={onSwapOrder}
+                title={isAtTop ? 'Move Projects below Placements' : 'Move Projects above Placements'}
+                className="px-2.5 py-1 rounded-full bg-white hover:bg-slate-50 text-[10px] font-bold text-slate-600 transition-all flex items-center gap-1 shadow-2xs border border-slate-200"
+              >
+                <span>{isAtTop ? '↓ Placements' : '↑ Projects'}</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onViewAll}
+              className="text-xs font-bold text-accent hover:opacity-80 transition-opacity flex items-center gap-0.5 ml-0.5"
+            >
+              <span>View all</span>
+              <span>→</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="py-7 text-center rounded-[22px] bg-white border border-slate-200/80 shadow-bento">
+          <div className="w-9 h-9 rounded-full bg-slate-50 flex items-center justify-center mx-auto text-slate-400 mb-2">
+            ✨
+          </div>
+          <p className="text-xs font-bold text-slate-800">No Upcoming Deadlines</p>
+          <p className="text-[11px] text-slate-500 mt-0.5">You're completely caught up on assignments.</p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-2.5 pt-1">
+      {/* Clean Section Header (No awkward icon, no all-caps, no nested card) */}
+      <div className="flex items-center justify-between px-1">
+        <div className="flex items-center gap-2">
+          <h2 className="text-base font-bold text-slate-900 tracking-tight">
+            Projects & Deadlines
+          </h2>
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200/70 text-slate-700">
+            {sortedProjects.length} upcoming
+          </span>
         </div>
 
         <div className="flex items-center gap-1.5">
-          {/* Swap Position / Placed toggle button */}
+          {/* Swap Position / Placed button */}
           {onSwapOrder && (
             <button
               type="button"
               onClick={onSwapOrder}
               title={isAtTop ? 'Move Projects below Placements' : 'Move Projects above Placements'}
-              className="px-2 py-0.5 rounded-full bg-slate-100 hover:bg-slate-200 active:scale-95 text-[10px] font-bold text-slate-600 transition-all flex items-center gap-0.5 shadow-2xs border border-slate-200/60"
+              className="px-2.5 py-1 rounded-full bg-white hover:bg-slate-50 text-[10px] font-bold text-slate-600 transition-all flex items-center gap-1 shadow-2xs border border-slate-200"
             >
               <span>{isAtTop ? '↓ Placements' : '↑ Projects'}</span>
             </button>
           )}
 
+          {/* Roller Controls when > 2 items */}
           {sortedProjects.length > 2 && (
             <div className="flex items-center gap-0.5">
               <button
@@ -1431,7 +1469,7 @@ function DashboardProjectsSection({
                 onClick={handleScrollUp}
                 aria-label="Roll to previous project"
                 title="Previous"
-                className="w-6 h-6 rounded-full bg-slate-100 hover:bg-slate-200 active:scale-95 flex items-center justify-center text-[10px] text-slate-600 font-bold transition-all shadow-2xs"
+                className="w-6 h-6 rounded-full bg-white border border-slate-200 hover:bg-slate-50 active:scale-95 flex items-center justify-center text-[10px] text-slate-600 font-bold transition-all shadow-2xs"
               >
                 ▲
               </button>
@@ -1440,7 +1478,7 @@ function DashboardProjectsSection({
                 onClick={handleScrollDown}
                 aria-label="Roll to next project"
                 title="Next"
-                className="w-6 h-6 rounded-full bg-slate-100 hover:bg-slate-200 active:scale-95 flex items-center justify-center text-[10px] text-slate-600 font-bold transition-all shadow-2xs"
+                className="w-6 h-6 rounded-full bg-white border border-slate-200 hover:bg-slate-50 active:scale-95 flex items-center justify-center text-[10px] text-slate-600 font-bold transition-all shadow-2xs"
               >
                 ▼
               </button>
@@ -1458,121 +1496,107 @@ function DashboardProjectsSection({
         </div>
       </div>
 
-      {/* Projects 2-Item Fixed Roller Container */}
-      {sortedProjects.length > 0 ? (
-        <div
-          ref={scrollRef}
-          className={`space-y-2 overflow-y-auto snap-y snap-mandatory scroll-smooth pr-0.5 scrollbar-none overscroll-contain ${
-            sortedProjects.length > 1 ? 'max-h-[200px]' : ''
-          }`}
-          style={{ scrollSnapType: 'y mandatory' }}
-        >
-          {sortedProjects.map((item) => {
-            const secs = secondsUntilDeadline(item.deadline)
-            const isPast = secs <= 0
-            const isUrgent = secs > 0 && secs < 86400 * 2
-            const typeConfig = TYPE_COLORS[item.type] || {
-              bg: 'bg-slate-50 text-slate-700 border-slate-200/60',
-              label: item.type,
-            }
+      {/* Projects 2-Item Fixed Roller Container of Direct Cards */}
+      <div
+        ref={scrollRef}
+        className={`space-y-2.5 overflow-y-auto snap-y snap-mandatory scroll-smooth pr-0.5 scrollbar-none overscroll-contain ${
+          sortedProjects.length > 1 ? 'max-h-[228px]' : ''
+        }`}
+        style={{ scrollSnapType: 'y mandatory' }}
+      >
+        {sortedProjects.map((item) => {
+          const secs = secondsUntilDeadline(item.deadline)
+          const isPast = secs <= 0
+          const isUrgent = secs > 0 && secs < 86400 * 2
+          const typeConfig = TYPE_COLORS[item.type] || {
+            bg: 'bg-slate-50 text-slate-700 border-slate-200/60',
+            label: item.type,
+          }
 
-            // Urgency percentage (clamped to 7 days)
-            const remainingRatio = Math.max(0, Math.min(100, Math.round((secs / (7 * 86400)) * 100)))
+          // Urgency percentage (clamped to 7 days)
+          const remainingRatio = Math.max(0, Math.min(100, Math.round((secs / (7 * 86400)) * 100)))
 
-            return (
-              <motion.div
-                key={item.id}
-                data-testid="dashboard-project-card"
-                whileTap={{ scale: 0.985 }}
-                onClick={() => onSelectProject(item)}
-                className="min-h-[96px] max-h-[96px] h-[96px] snap-start rounded-2xl bg-slate-50/70 hover:bg-slate-50 border border-slate-200/70 p-3 cursor-pointer flex flex-col justify-between transition-all hover:shadow-2xs select-none"
-              >
-                {/* Top Row: Type Badge + Course Tag + Countdown */}
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-                    <span
-                      className={`text-[9px] font-bold px-2 py-0.5 rounded-md border ${typeConfig.bg}`}
-                    >
-                      {typeConfig.label}
+          return (
+            <motion.div
+              key={item.id}
+              data-testid="dashboard-project-card"
+              whileTap={{ scale: 0.985 }}
+              onClick={() => onSelectProject(item)}
+              className="min-h-[104px] max-h-[104px] h-[104px] snap-start rounded-[22px] bg-white border border-slate-200/80 shadow-bento hover:border-slate-300 p-3.5 cursor-pointer flex flex-col justify-between transition-all select-none"
+            >
+              {/* Row 1: Course code badge + Type badge + Urgency Countdown Chip */}
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  {item.course ? (
+                    <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200/60 truncate max-w-[130px]">
+                      {item.course.code}
                     </span>
-                    {item.course && (
-                      <span className="text-[10px] font-bold font-mono text-slate-600 bg-white px-1.5 py-0.5 rounded border border-slate-200/60 truncate max-w-[120px]">
-                        {item.course.code}
-                      </span>
-                    )}
-                  </div>
-
+                  ) : null}
                   <span
-                    className={`flex-shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                      isPast
-                        ? 'bg-slate-200 text-slate-500'
-                        : isUrgent
-                        ? 'bg-amber-100 text-amber-800 animate-pulse'
-                        : 'bg-blue-50 text-blue-700 border border-blue-200/50'
-                    }`}
+                    className={`text-[9px] font-bold px-2 py-0.5 rounded-md border ${typeConfig.bg}`}
                   >
-                    {isPast ? 'Passed' : formatDuration(secs) + ' left'}
+                    {typeConfig.label}
                   </span>
                 </div>
 
-                {/* Title */}
-                <h3 className="text-xs font-bold text-slate-900 truncate leading-tight">
-                  {item.title}
-                </h3>
+                <span
+                  className={`flex-shrink-0 text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1.5 ${
+                    isPast
+                      ? 'bg-slate-100 text-slate-500 border border-slate-200/60'
+                      : isUrgent
+                      ? 'bg-rose-50 text-rose-700 border border-rose-200/80 shadow-2xs animate-pulse'
+                      : 'bg-slate-100 text-slate-700 border border-slate-200/80 shadow-2xs'
+                  }`}
+                >
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      isPast ? 'bg-slate-400' : isUrgent ? 'bg-rose-500' : 'bg-emerald-500'
+                    }`}
+                  />
+                  <span>{isPast ? 'Passed' : formatDuration(secs) + ' left'}</span>
+                </span>
+              </div>
 
-                {/* Sub-info: Formatted date & group size + Progress urgency bar */}
-                <div>
-                  <div className="w-full bg-slate-200/60 h-1 rounded-full overflow-hidden mb-1.5">
-                    <div
-                      className={`h-full rounded-full transition-all ${
-                        isPast
-                          ? 'bg-slate-400'
-                          : isUrgent
-                          ? 'bg-rose-500'
-                          : 'bg-emerald-500'
-                      }`}
-                      style={{ width: `${isPast ? 100 : remainingRatio}%` }}
-                    />
-                  </div>
+              {/* Row 2: Title */}
+              <h3 className="text-sm font-bold text-slate-900 tracking-tight truncate leading-tight">
+                {item.title}
+              </h3>
 
-                  <div className="flex items-center justify-between text-[10px] text-slate-500">
-                    <span className="truncate flex items-center gap-1">
-                      <svg className="w-3 h-3 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                      <span>{formatDeadline(item.deadline)}</span>
-                    </span>
-                    {item.group_size > 1 ? (
-                      <span className="text-[10px] font-medium text-slate-600 flex-shrink-0 flex items-center gap-1">
-                        <svg className="w-3 h-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                        </svg>
-                        <span>Group of {item.group_size}</span>
-                      </span>
-                    ) : (
-                      <span className="text-[10px] font-medium text-slate-400 flex-shrink-0 flex items-center gap-1">
-                        <svg className="w-3 h-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                        </svg>
-                        <span>Individual</span>
-                      </span>
-                    )}
-                  </div>
+              {/* Row 3: Slim Urgency Line + Formatted date & group size */}
+              <div>
+                <div className="w-full bg-slate-100 h-1 rounded-full overflow-hidden mb-1.5">
+                  <div
+                    className={`h-full rounded-full transition-all ${
+                      isPast
+                        ? 'bg-slate-400'
+                        : isUrgent
+                        ? 'bg-rose-500'
+                        : 'bg-emerald-500'
+                    }`}
+                    style={{ width: `${isPast ? 100 : remainingRatio}%` }}
+                  />
                 </div>
-              </motion.div>
-            )
-          })}
-        </div>
-      ) : (
-        <div className="py-6 text-center bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 space-y-1">
-          <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center mx-auto text-slate-400 mb-1">
-            ✨
-          </div>
-          <p className="text-xs font-bold text-slate-800">No Upcoming Deadlines</p>
-          <p className="text-[11px] text-slate-500">You're completely caught up on assignments.</p>
-        </div>
-      )}
-    </section>
+
+                <div className="flex items-center justify-between text-[11px] text-slate-500 font-medium">
+                  <span className="truncate">
+                    Due {formatDeadline(item.deadline)}
+                  </span>
+                  {item.group_size > 1 ? (
+                    <span className="text-[10px] font-medium text-slate-600 flex-shrink-0">
+                      Group of {item.group_size}
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-medium text-slate-400 flex-shrink-0">
+                      Individual
+                    </span>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          )
+        })}
+      </div>
+    </div>
   )
 }
 
