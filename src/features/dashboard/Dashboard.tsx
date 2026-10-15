@@ -67,15 +67,6 @@ export function Dashboard() {
     }
   })
 
-  const togglePlacementOrder = () => {
-    setIsPlacedMode((prev) => {
-      const next = !prev
-      try {
-        localStorage.setItem('whats_next_is_placed', String(next))
-      } catch {}
-      return next
-    })
-  }
 
   const setPlacedStatus = (placed: boolean) => {
     setIsPlacedMode(placed)
@@ -211,8 +202,6 @@ export function Dashboard() {
                 projects={projects.upcoming}
                 onSelectProject={(p) => setSelectedProject(p)}
                 onViewAll={() => navigate('/projects')}
-                onSwapOrder={togglePlacementOrder}
-                isAtTop={true}
               />
             </motion.div>
 
@@ -222,10 +211,7 @@ export function Dashboard() {
               layout
               transition={{ duration: 0.25 }}
             >
-              <PlacementDeadlineWidget
-                onSwapOrder={togglePlacementOrder}
-                isAtBottom={true}
-              />
+              <PlacementDeadlineWidget />
             </motion.div>
           </>
         ) : (
@@ -236,10 +222,7 @@ export function Dashboard() {
               layout
               transition={{ duration: 0.25 }}
             >
-              <PlacementDeadlineWidget
-                onSwapOrder={togglePlacementOrder}
-                isAtBottom={false}
-              />
+              <PlacementDeadlineWidget />
             </motion.div>
 
             {/* PROJECTS & ASSIGNMENTS BELOW */}
@@ -252,8 +235,6 @@ export function Dashboard() {
                 projects={projects.upcoming}
                 onSelectProject={(p) => setSelectedProject(p)}
                 onViewAll={() => navigate('/projects')}
-                onSwapOrder={togglePlacementOrder}
-                isAtTop={false}
               />
             </motion.div>
           </>
@@ -1409,8 +1390,6 @@ function DashboardProjectsSection({
   projects,
   onSelectProject,
   onViewAll,
-  onSwapOrder,
-  isAtTop = false,
 }: {
   projects: Project[]
   onSelectProject: (p: Project) => void
@@ -1425,16 +1404,6 @@ function DashboardProjectsSection({
     (a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime()
   )
 
-  const handleScrollUp = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    scrollRef.current?.scrollBy({ top: -104, behavior: 'smooth' })
-  }
-
-  const handleScrollDown = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    scrollRef.current?.scrollBy({ top: 104, behavior: 'smooth' })
-  }
-
   if (sortedProjects.length === 0) {
     return (
       <div className="space-y-2.5 pt-1">
@@ -1442,26 +1411,14 @@ function DashboardProjectsSection({
           <h2 className="text-base font-bold text-slate-900 tracking-tight">
             Projects & Deadlines
           </h2>
-          <div className="flex items-center gap-1.5">
-            {onSwapOrder && (
-              <button
-                type="button"
-                onClick={onSwapOrder}
-                title={isAtTop ? 'Move Projects below Placements' : 'Move Projects above Placements'}
-                className="px-2.5 py-1 rounded-full bg-white hover:bg-slate-50 text-[10px] font-bold text-slate-600 transition-all flex items-center gap-1 shadow-2xs border border-slate-200"
-              >
-                <span>{isAtTop ? '↓ Placements' : '↑ Projects'}</span>
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={onViewAll}
-              className="text-xs font-bold text-accent hover:opacity-80 transition-opacity flex items-center gap-0.5 ml-0.5"
-            >
-              <span>View all</span>
-              <span>→</span>
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={onViewAll}
+            className="text-xs font-semibold text-slate-500 hover:text-slate-900 transition-colors flex items-center gap-1"
+          >
+            <span>View all</span>
+            <span>→</span>
+          </button>
         </div>
 
         <div className="py-7 text-center rounded-[22px] bg-white border border-slate-200/80 shadow-bento">
@@ -1477,70 +1434,32 @@ function DashboardProjectsSection({
 
   return (
     <div className="space-y-2.5 pt-1">
-      {/* Clean Section Header (No awkward icon, no all-caps, no nested card) */}
+      {/* Clean Section Header (Minimal, no buttons, no desktop arrows) */}
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
           <h2 className="text-base font-bold text-slate-900 tracking-tight">
             Projects & Deadlines
           </h2>
-          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200/70 text-slate-700">
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200/60">
             {sortedProjects.length} upcoming
           </span>
         </div>
 
-        <div className="flex items-center gap-1.5">
-          {/* Swap Position / Placed button */}
-          {onSwapOrder && (
-            <button
-              type="button"
-              onClick={onSwapOrder}
-              title={isAtTop ? 'Move Projects below Placements' : 'Move Projects above Placements'}
-              className="px-2.5 py-1 rounded-full bg-white hover:bg-slate-50 text-[10px] font-bold text-slate-600 transition-all flex items-center gap-1 shadow-2xs border border-slate-200"
-            >
-              <span>{isAtTop ? '↓ Placements' : '↑ Projects'}</span>
-            </button>
-          )}
-
-          {/* Roller Controls when > 2 items */}
-          {sortedProjects.length > 2 && (
-            <div className="flex items-center gap-0.5">
-              <button
-                type="button"
-                onClick={handleScrollUp}
-                aria-label="Roll to previous project"
-                title="Previous"
-                className="w-6 h-6 rounded-full bg-white border border-slate-200 hover:bg-slate-50 active:scale-95 flex items-center justify-center text-[10px] text-slate-600 font-bold transition-all shadow-2xs"
-              >
-                ▲
-              </button>
-              <button
-                type="button"
-                onClick={handleScrollDown}
-                aria-label="Roll to next project"
-                title="Next"
-                className="w-6 h-6 rounded-full bg-white border border-slate-200 hover:bg-slate-50 active:scale-95 flex items-center justify-center text-[10px] text-slate-600 font-bold transition-all shadow-2xs"
-              >
-                ▼
-              </button>
-            </div>
-          )}
-
-          <button
-            type="button"
-            onClick={onViewAll}
-            className="text-xs font-bold text-accent hover:opacity-80 transition-opacity flex items-center gap-0.5 ml-0.5"
-          >
-            <span>View all</span>
-            <span>→</span>
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={onViewAll}
+          className="text-xs font-semibold text-slate-500 hover:text-slate-900 transition-colors flex items-center gap-1"
+        >
+          <span>View all</span>
+          <span>→</span>
+        </button>
       </div>
 
-      {/* Projects 2-Item Fixed Roller Container of Direct Cards */}
+      {/* Projects Container: Card peek affordance when > 2 items so users naturally see more is there */}
       <div
         ref={scrollRef}
         className={`space-y-2.5 overflow-y-auto snap-y snap-mandatory scroll-smooth pr-0.5 scrollbar-none overscroll-contain ${
-          sortedProjects.length > 1 ? 'max-h-[228px]' : ''
+          sortedProjects.length > 2 ? 'max-h-[235px]' : ''
         }`}
         style={{ scrollSnapType: 'y mandatory' }}
       >
@@ -1548,15 +1467,9 @@ function DashboardProjectsSection({
           const secs = secondsUntilDeadline(item.deadline)
           const isPast = secs <= 0
           const isCritical = secs > 0 && secs < 3600 * 12
-          const isUrgent = secs > 0 && secs < 86400
-          const isWarm = secs >= 86400 && secs < 86400 * 2
-          const typeConfig = TYPE_COLORS[item.type] || {
-            bg: 'bg-slate-50 text-slate-700 border-slate-200/60',
-            label: item.type,
-          }
 
           // Calculate progress towards submission deadline (0 to 100%)
-          // High fill as deadline approaches; 100% when passed
+          // Fills smoothly towards 100% as submission deadline approaches
           let submissionProgress = 100
           if (!isPast) {
             if ((item as any).created_at) {
@@ -1594,107 +1507,60 @@ function DashboardProjectsSection({
               data-testid="dashboard-project-card"
               whileTap={{ scale: 0.985 }}
               onClick={() => onSelectProject(item)}
-              className={`min-h-[104px] max-h-[104px] h-[104px] snap-start rounded-[22px] bg-white p-3.5 cursor-pointer flex flex-col justify-between transition-all select-none ${
-                isCritical
-                  ? 'border border-rose-200/90 shadow-[0_4px_16px_-4px_rgba(244,63,94,0.14)] hover:border-rose-300'
-                  : isUrgent
-                  ? 'border border-amber-200/80 shadow-bento hover:border-amber-300'
-                  : 'border border-slate-200/80 shadow-bento hover:border-slate-300'
-              }`}
+              className="min-h-[96px] max-h-[96px] h-[96px] snap-start rounded-[20px] bg-white border border-slate-200/70 shadow-xs hover:border-slate-300 p-3.5 cursor-pointer flex flex-col justify-between transition-all select-none"
             >
-              {/* Row 1: Course code badge + Type badge + Urgency Countdown Chip */}
+              {/* Row 1: Course code tag + Type name + Minimal Countdown */}
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0 flex-1">
                   {item.course ? (
-                    <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200/60 truncate max-w-[130px]">
+                    <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded-md bg-slate-100 text-slate-800 border border-slate-200/60 truncate max-w-[120px]">
                       {item.course.code}
                     </span>
                   ) : null}
-                  <span
-                    className={`text-[9px] font-bold px-2 py-0.5 rounded-md border ${typeConfig.bg}`}
-                  >
-                    {typeConfig.label}
+                  <span className="text-[11px] font-medium text-slate-400 capitalize">
+                    {item.type}
                   </span>
                 </div>
 
-                <span
-                  className={`flex-shrink-0 text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1.5 ${
-                    isPast
-                      ? 'bg-slate-100 text-slate-500 border border-slate-200/60'
-                      : isCritical
-                      ? 'bg-rose-50 text-rose-700 border border-rose-200/90 shadow-2xs'
-                      : isUrgent || isWarm
-                      ? 'bg-amber-50 text-amber-800 border border-amber-200/80 shadow-2xs'
-                      : 'bg-emerald-50 text-emerald-800 border border-emerald-200/80 shadow-2xs'
-                  }`}
-                >
-                  {isCritical ? (
-                    <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500" />
-                    </span>
-                  ) : (
-                    <span
-                      className={`w-1.5 h-1.5 rounded-full ${
-                        isPast
-                          ? 'bg-slate-400'
-                          : isUrgent || isWarm
-                          ? 'bg-amber-500'
-                          : 'bg-emerald-500'
-                      }`}
-                    />
-                  )}
-                  <span>{isPast ? 'Passed' : formatDuration(secs) + ' left'}</span>
-                </span>
+                {isCritical ? (
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-rose-600 flex-shrink-0">
+                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                    <span>{formatDuration(secs)} left</span>
+                  </div>
+                ) : (
+                  <span className="text-xs font-medium text-slate-500 flex-shrink-0">
+                    {isPast ? 'Passed' : `${formatDuration(secs)} left`}
+                  </span>
+                )}
               </div>
 
               {/* Row 2: Title */}
-              <h3 className="text-sm font-bold text-slate-900 tracking-tight truncate leading-tight">
+              <h3 className="text-sm font-semibold text-slate-900 tracking-tight truncate leading-tight">
                 {item.title}
               </h3>
 
-              {/* Row 3: Submission Progress Bar with Reaching-Deadline Effects + Date */}
+              {/* Row 3: Minimal, High-Feeling Progress Bar + Date & Group */}
               <div>
-                {/* Progress Track */}
-                <div className="relative w-full bg-slate-100 h-1.5 rounded-full overflow-hidden mb-1.5">
+                <div className="w-full bg-slate-100 h-1 rounded-full overflow-hidden mb-1.5">
                   <div
                     className={`h-full rounded-full transition-all duration-500 ${
                       isPast
                         ? 'bg-slate-300'
                         : isCritical
-                        ? 'bg-gradient-to-r from-rose-500 via-amber-400 to-rose-600 shadow-[0_0_10px_rgba(244,63,94,0.7)] animate-pulse'
-                        : isUrgent
-                        ? 'bg-gradient-to-r from-amber-500 to-rose-500 shadow-[0_0_6px_rgba(245,158,11,0.5)]'
-                        : isWarm
-                        ? 'bg-gradient-to-r from-amber-400 to-amber-500'
-                        : 'bg-gradient-to-r from-emerald-400 to-teal-500'
+                        ? 'bg-rose-500 animate-pulse'
+                        : 'bg-slate-800'
                     }`}
                     style={{ width: `${submissionProgress}%` }}
                   />
                 </div>
 
                 <div className="flex items-center justify-between text-[11px] font-medium">
-                  <span
-                    className={`truncate flex items-center gap-1 ${
-                      isCritical
-                        ? 'text-rose-600 font-bold'
-                        : isUrgent
-                        ? 'text-amber-800 font-semibold'
-                        : 'text-slate-500'
-                    }`}
-                  >
-                    {isCritical && <span className="text-[10px]">⏰</span>}
-                    <span>Due {formatDeadline(item.deadline)}</span>
+                  <span className="truncate text-slate-500">
+                    Due {formatDeadline(item.deadline)}
                   </span>
-                  {item.group_size > 1 ? (
-                    <span className="text-[10px] font-medium text-slate-600 flex-shrink-0">
-                      Group of {item.group_size}
-                    </span>
-                  ) : (
-                    <span className="text-[10px] font-medium text-slate-400 flex-shrink-0">
-                      Individual
-                    </span>
-                  )}
+                  <span className="text-slate-400 flex-shrink-0">
+                    {item.group_size > 1 ? `Group of ${item.group_size}` : 'Individual'}
+                  </span>
                 </div>
               </div>
             </motion.div>

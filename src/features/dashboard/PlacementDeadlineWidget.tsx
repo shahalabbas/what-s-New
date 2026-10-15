@@ -15,8 +15,6 @@ interface PlacementDeadlineWidgetProps {
 
 export function PlacementDeadlineWidget({
   onOpenDetail,
-  onSwapOrder,
-  isAtBottom = false,
 }: PlacementDeadlineWidgetProps) {
   const navigate = useNavigate()
   const { openOpportunities, setApplicationStatus } = usePlacements()
@@ -40,16 +38,6 @@ export function PlacementDeadlineWidget({
   })
   const now = useNow(hasUrgentDeadline)
 
-  const handleScrollUp = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    scrollRef.current?.scrollBy({ top: -104, behavior: 'smooth' })
-  }
-
-  const handleScrollDown = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    scrollRef.current?.scrollBy({ top: 104, behavior: 'smooth' })
-  }
-
   const handleMarkApplied = async (e: React.MouseEvent, oppId: string) => {
     e.stopPropagation()
     setAppliedMap((prev) => ({ ...prev, [oppId]: true }))
@@ -63,26 +51,14 @@ export function PlacementDeadlineWidget({
           <h2 className="text-base font-bold text-slate-900 tracking-tight">
             Placement Opportunities
           </h2>
-          <div className="flex items-center gap-1.5">
-            {onSwapOrder && (
-              <button
-                type="button"
-                onClick={onSwapOrder}
-                title={isAtBottom ? 'Move Placements to top' : 'Pull Placements to bottom (I am placed)'}
-                className="px-2.5 py-1 rounded-full bg-white hover:bg-slate-50 text-[10px] font-bold text-slate-600 transition-all flex items-center gap-1 shadow-2xs border border-slate-200"
-              >
-                <span>{isAtBottom ? '↑ Placements' : '↓ Placed'}</span>
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => navigate('/placements')}
-              className="text-xs font-bold text-accent hover:opacity-80 transition-opacity flex items-center gap-0.5 ml-0.5"
-            >
-              <span>View all</span>
-              <span>→</span>
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => navigate('/placements')}
+            className="text-xs font-semibold text-slate-500 hover:text-slate-900 transition-colors flex items-center gap-1"
+          >
+            <span>View all</span>
+            <span>→</span>
+          </button>
         </div>
         <div className="py-7 text-center rounded-[22px] bg-white border border-slate-200/80 shadow-bento">
           <div className="w-9 h-9 rounded-full bg-slate-50 flex items-center justify-center mx-auto text-slate-400 mb-2">
@@ -98,70 +74,32 @@ export function PlacementDeadlineWidget({
   return (
     <>
       <div className="space-y-2.5 pt-1">
-        {/* Clean Section Header (No awkward icon, no all-caps, no nested box) */}
+        {/* Clean Section Header (Minimal, no awkward buttons, no desktop arrows) */}
         <div className="flex items-center justify-between px-1">
           <div className="flex items-center gap-2">
             <h2 className="text-base font-bold text-slate-900 tracking-tight">
               Placement Opportunities
             </h2>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200/70 text-slate-700">
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200/60">
               {sortedOpportunities.length} active
             </span>
           </div>
 
-          <div className="flex items-center gap-1.5">
-            {/* Swap Position / Placed pull down button */}
-            {onSwapOrder && (
-              <button
-                type="button"
-                onClick={onSwapOrder}
-                title={isAtBottom ? 'Move Placements above Projects' : 'Pull Placements to bottom (I am placed)'}
-                className="px-2.5 py-1 rounded-full bg-white hover:bg-slate-50 text-[10px] font-bold text-slate-600 transition-all flex items-center gap-1 shadow-2xs border border-slate-200"
-              >
-                <span>{isAtBottom ? '↑ Placements' : '↓ Placed'}</span>
-              </button>
-            )}
-
-            {/* Roller Controls when > 2 items */}
-            {sortedOpportunities.length > 2 && (
-              <div className="flex items-center gap-0.5">
-                <button
-                  type="button"
-                  onClick={handleScrollUp}
-                  aria-label="Roll to previous placement"
-                  title="Previous"
-                  className="w-6 h-6 rounded-full bg-white border border-slate-200 hover:bg-slate-50 active:scale-95 flex items-center justify-center text-[10px] text-slate-600 font-bold transition-all shadow-2xs"
-                >
-                  ▲
-                </button>
-                <button
-                  type="button"
-                  onClick={handleScrollDown}
-                  aria-label="Roll to next placement"
-                  title="Next"
-                  className="w-6 h-6 rounded-full bg-white border border-slate-200 hover:bg-slate-50 active:scale-95 flex items-center justify-center text-[10px] text-slate-600 font-bold transition-all shadow-2xs"
-                >
-                  ▼
-                </button>
-              </div>
-            )}
-
-            <button
-              type="button"
-              onClick={() => navigate('/placements')}
-              className="text-xs font-bold text-accent hover:opacity-80 transition-opacity flex items-center gap-0.5 ml-0.5"
-            >
-              <span>View all</span>
-              <span>→</span>
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => navigate('/placements')}
+            className="text-xs font-semibold text-slate-500 hover:text-slate-900 transition-colors flex items-center gap-1"
+          >
+            <span>View all</span>
+            <span>→</span>
+          </button>
         </div>
 
-        {/* 2-Item Fixed Roller Container of Direct Cards */}
+        {/* Roller Container: Peek 3rd card naturally so users see there is more without arrows */}
         <div
           ref={scrollRef}
           className={`space-y-2.5 overflow-y-auto snap-y snap-mandatory scroll-smooth pr-0.5 scrollbar-none overscroll-contain ${
-            sortedOpportunities.length > 1 ? 'max-h-[228px]' : ''
+            sortedOpportunities.length > 2 ? 'max-h-[240px]' : ''
           }`}
           style={{ scrollSnapType: 'y mandatory' }}
         >
@@ -208,7 +146,7 @@ export function PlacementDeadlineWidget({
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2.5 min-w-0 flex-1">
                     {/* Monogram Badge */}
-                    <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-indigo-500/10 to-indigo-500/20 border border-indigo-200/60 flex items-center justify-center text-xs font-black text-indigo-700 flex-shrink-0">
+                    <div className="w-7 h-7 rounded-xl bg-slate-100 border border-slate-200/80 flex items-center justify-center text-xs font-bold text-slate-800 flex-shrink-0">
                       {companyInitial}
                     </div>
 
@@ -250,7 +188,7 @@ export function PlacementDeadlineWidget({
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}
-                        className="px-2.5 py-1 rounded-xl text-[10px] font-bold bg-accent text-white hover:opacity-90 transition-all flex items-center gap-0.5 shadow-2xs"
+                        className="px-3 py-1 rounded-xl text-[10px] font-bold bg-slate-900 text-white hover:bg-slate-800 transition-all flex items-center gap-0.5 shadow-2xs"
                       >
                         <span>Apply</span>
                         <span>↗</span>
