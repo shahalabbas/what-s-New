@@ -44,7 +44,7 @@ export function Dashboard() {
   const schedule = useSchedule()
   const mess = useMessMenu()
   const projects = useProjects()
-  const { user, profile, signOut } = useAuth()
+  const { user, profile, signOut, isAdmin } = useAuth()
   const { themePref, setTheme } = useTheme()
   useNow()
   const notifications = useNotifications({
@@ -779,31 +779,36 @@ export function Dashboard() {
                   <span>5-minute pre-alerts for classes & food menus are active for your account.</span>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 pt-0.5">
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      const sent = await notifications.sendTestNotification('class')
-                      if (sent) toast.success('5-min class alert pushed with app logo!')
-                      else toast.error('Could not deliver notification')
-                    }}
-                    className="py-2 px-2.5 rounded-xl text-[11px] font-bold bg-white dark:bg-[#1C1C1E] text-slate-700 dark:text-slate-200 border border-border dark:border-white/10 hover:border-slate-300 transition-all flex items-center justify-center gap-1.5"
-                  >
-                    <span>📚 Test 5-Min Class</span>
-                  </button>
+                {isAdmin && (
+                  <div className="pt-1 space-y-1.5 border-t border-border/50 dark:border-white/5">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-secondary-text">Admin Test Triggers</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const sent = await notifications.sendTestNotification('class')
+                          if (sent) toast.success('5-min class alert pushed with app logo!')
+                          else toast.error('Could not deliver notification')
+                        }}
+                        className="py-2 px-2.5 rounded-xl text-[11px] font-bold bg-white dark:bg-[#1C1C1E] text-slate-700 dark:text-slate-200 border border-border dark:border-white/10 hover:border-slate-300 transition-all flex items-center justify-center gap-1.5"
+                      >
+                        <span>📚 Test 5-Min Class</span>
+                      </button>
 
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      const sent = await notifications.sendTestNotification('mess')
-                      if (sent) toast.success('5-min mess alert with food & logo pushed!')
-                      else toast.error('Could not deliver notification')
-                    }}
-                    className="py-2 px-2.5 rounded-xl text-[11px] font-bold bg-white dark:bg-[#1C1C1E] text-slate-700 dark:text-slate-200 border border-border dark:border-white/10 hover:border-slate-300 transition-all flex items-center justify-center gap-1.5"
-                  >
-                    <span>🍽️ Test 5-Min Food</span>
-                  </button>
-                </div>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const sent = await notifications.sendTestNotification('mess')
+                          if (sent) toast.success('5-min mess alert with food & logo pushed!')
+                          else toast.error('Could not deliver notification')
+                        }}
+                        className="py-2 px-2.5 rounded-xl text-[11px] font-bold bg-white dark:bg-[#1C1C1E] text-slate-700 dark:text-slate-200 border border-border dark:border-white/10 hover:border-slate-300 transition-all flex items-center justify-center gap-1.5"
+                      >
+                        <span>🍽️ Test 5-Min Food</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
