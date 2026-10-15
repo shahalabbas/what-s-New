@@ -25,6 +25,7 @@ function NotificationWatcher() {
     sessions: schedule.todaySessions,
     messMenus: mess.menus,
     dayMenus: mess.todayDayMenus,
+    autoRequest: true,
   })
   return null
 }

@@ -18,10 +18,12 @@ export function useNotifications(options?: {
   sessions?: ResolvedSession[]
   messMenus?: MessMenu[]
   dayMenus?: MessMenuDay[]
+  autoRequest?: boolean
 }) {
   const [permission, setPermission] = useState<NotificationPermissionState>(getNotificationPermission)
   const [isSupported] = useState<boolean>(isNotificationSupported)
 
+  // Default to enabled for all registered users without requiring manual setup
   const [classAlertsEnabled, setClassAlertsEnabledState] = useState<boolean>(() => {
     try {
       const val = localStorage.getItem(PREF_CLASS_ALERTS)
@@ -39,6 +41,19 @@ export function useNotifications(options?: {
       return true
     }
   })
+
+  // Auto-request permission when user is registered/active
+  useEffect(() => {
+    if (options?.autoRequest && isNotificationSupported() && Notification.permission === 'default') {
+      try {
+        Notification.requestPermission()
+          .then((res) => {
+            setPermission(res)
+          })
+          .catch(() => {})
+      } catch {}
+    }
+  }, [options?.autoRequest])
 
   // Update permission on visibility change or focus
   useEffect(() => {
@@ -73,7 +88,7 @@ export function useNotifications(options?: {
     return result
   }, [])
 
-  // Send a realistic test notification for verification
+  // Send a realistic 5-min prior test notification for verification
   const sendTestNotification = useCallback(
     async (type: 'class' | 'mess'): Promise<boolean> => {
       if (permission !== 'granted') {
@@ -82,12 +97,16 @@ export function useNotifications(options?: {
       }
 
       if (type === 'class') {
+        // Starts 5 minutes from now
+        const startTimeStr = formatIST(new Date(nowIST().getTime() + 5 * 60 * 1000), 'HH:mm')
+        const endTimeStr = formatIST(new Date(nowIST().getTime() + 80 * 60 * 1000), 'HH:mm')
+
         const mockSession: ResolvedSession = {
           id: 'test-class',
           course_id: 'CS101',
           session_type: 'regular',
-          start_time: formatIST(nowIST(), 'HH:mm'),
-          end_time: formatIST(new Date(nowIST().getTime() + 75 * 60 * 1000), 'HH:mm'),
+          start_time: startTimeStr,
+          end_time: endTimeStr,
           room: 'CR-102',
           session_no: 12,
           course: {
@@ -106,16 +125,16 @@ export function useNotifications(options?: {
           id: 'test-mess',
           date: todayIST(),
           meal: 'lunch',
-          start_time: '12:30',
-          end_time: '14:30',
+          start_time: formatIST(new Date(nowIST().getTime() + 5 * 60 * 1000), 'HH:mm'),
+          end_time: formatIST(new Date(nowIST().getTime() + 125 * 60 * 1000), 'HH:mm'),
           items: ['Paneer Butter Masala', 'Dal Tadka', 'Jeera Rice', 'Tandoori Roti', 'Gulab Jamun'],
         }
         const mockDayMenu: MessMenuDay = {
           date: todayIST(),
           meal: 'lunch',
           label: 'Lunch',
-          start_time: '12:30',
-          end_time: '14:30',
+          start_time: mockMeal.start_time,
+          end_time: mockMeal.end_time,
           has_non_veg: false,
           has_special: true,
           items: [
@@ -132,7 +151,7 @@ export function useNotifications(options?: {
     [permission, requestPermission]
   )
 
-  // Evaluates schedules against current time
+  // Evaluates schedules against current time (triggers 5 minutes prior)
   const checkSchedules = useCallback(() => {
     if (permission !== 'granted') return
 
@@ -140,14 +159,16 @@ export function useNotifications(options?: {
     const nowMinutes = timeToMinutes(formatIST(now, 'HH:mm'))
     const todayStr = todayIST()
 
-    // 1. Check Class Sessions
+    // 1. Check Class Sessions (5 minutes before start)
     if (classAlertsEnabled && options?.sessions && options.sessions.length > 0) {
       for (const session of options.sessions) {
         const startMin = timeToMinutes(session.start_time)
-        // Trigger if current time is within [startMin - 1, startMin + 2]
-        const diff = nowMinutes - startMin
-        if (diff >= -1 && diff <= 2) {
-          const dedupeKey = `whats_next_notified_class_${session.id}_${todayStr}`
+        const targetMin = startMin - 5
+        const diff = nowMinutes - targetMin
+
+        // Trigger if current time is within [targetMin, targetMin + 2]
+        if (diff >= 0 && diff <= 2) {
+          const dedupeKey = `whats_next_notified_5m_class_${session.id}_${todayStr}`
           try {
             if (!localStorage.getItem(dedupeKey)) {
               localStorage.setItem(dedupeKey, 'true')
@@ -158,15 +179,18 @@ export function useNotifications(options?: {
       }
     }
 
-    // 2. Check Mess Meals
+    // 2. Check Mess Meals (5 minutes before start)
     if (messAlertsEnabled && options?.messMenus && options.messMenus.length > 0) {
       for (const meal of options.messMenus) {
         if (meal.date && meal.date !== todayStr) continue
 
         const startMin = timeToMinutes(meal.start_time)
-        const diff = nowMinutes - startMin
-        if (diff >= -1 && diff <= 2) {
-          const dedupeKey = `whats_next_notified_mess_${meal.meal}_${todayStr}`
+        const targetMin = startMin - 5
+        const diff = nowMinutes - targetMin
+
+        // Trigger if current time is within [targetMin, targetMin + 2]
+        if (diff >= 0 && diff <= 2) {
+          const dedupeKey = `whats_next_notified_5m_mess_${meal.meal}_${todayStr}`
           try {
             if (!localStorage.getItem(dedupeKey)) {
               localStorage.setItem(dedupeKey, 'true')
@@ -181,7 +205,7 @@ export function useNotifications(options?: {
     }
   }, [permission, classAlertsEnabled, messAlertsEnabled, options?.sessions, options?.messMenus, options?.dayMenus])
 
-  // Periodic heartbeat every 20 seconds to catch exact start times
+  // Periodic heartbeat every 20 seconds to catch exact 5-minute pre-alert times
   const checkRef = useRef(checkSchedules)
   useEffect(() => {
     checkRef.current = checkSchedules

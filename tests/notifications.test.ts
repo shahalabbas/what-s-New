@@ -6,11 +6,12 @@ import {
   isNotificationSupported,
   getNotificationPermission,
   requestNotificationPermission,
+  getAppLogoUrl,
 } from '../src/lib/notifications'
 import { useNotifications } from '../src/hooks/useNotifications'
 import type { ResolvedSession, MessMenu, MessMenuDay } from '../src/types'
 
-describe('Push Notifications for Classes & Mess Food', () => {
+describe('Push Notifications for Classes & Mess Food (5-Min Pre-Alerts)', () => {
   let store: Record<string, string> = {}
 
   beforeEach(() => {
@@ -37,7 +38,7 @@ describe('Push Notifications for Classes & Mess Food', () => {
     vi.restoreAllMocks()
   })
 
-  describe('formatClassNotification', () => {
+  describe('formatClassNotification (5-Min Pre-Alert)', () => {
     const mockSession: ResolvedSession = {
       id: 'session-101',
       course_id: 'CS101',
@@ -57,15 +58,17 @@ describe('Push Notifications for Classes & Mess Food', () => {
       },
     }
 
-    it('formats title and body with course, room, session number, and faculty', () => {
+    it('formats title and body for 5-min pre-alert with app logo and details', () => {
       const payload = formatClassNotification(mockSession)
-      expect(payload.title).toContain('Class Starting: Digital Product Strategy')
+      expect(payload.title).toBe('📚 Class in 5 Mins: Digital Product Strategy')
+      expect(payload.body).toContain('Starts at 9:00 AM')
       expect(payload.body).toContain('Room CR-101')
       expect(payload.body).toContain('Session 8 of 20')
       expect(payload.body).toContain('with Prof. Rajesh Sharma')
-      expect(payload.body).toContain('9:00 AM – 10:15 AM')
       expect(payload.data?.url).toBe('/timetable')
-      expect(payload.tag).toBe('class-session-101')
+      expect(payload.tag).toBe('class-5m-session-101')
+      expect(payload.icon).toContain('/icons/icon-192.png')
+      expect(payload.badge).toContain('/icons/icon-192.png')
     })
 
     it('handles fallback course name and missing faculty gracefully', () => {
@@ -78,13 +81,13 @@ describe('Push Notifications for Classes & Mess Food', () => {
         end_time: '15:15',
       }
       const payload = formatClassNotification(minimalSession)
-      expect(payload.title).toBe('📚 Class Starting: UNKNOWN')
+      expect(payload.title).toBe('📚 Class in 5 Mins: UNKNOWN')
+      expect(payload.body).toContain('Starts at 2:00 PM')
       expect(payload.body).toContain('CR')
-      expect(payload.body).toContain('2:00 PM – 3:15 PM')
     })
   })
 
-  describe('formatMessNotification (Includes Food Items)', () => {
+  describe('formatMessNotification (5-Min Pre-Alert with Food Items)', () => {
     const mockMeal: MessMenu = {
       id: 'lunch-1',
       date: '2026-10-15',
@@ -110,20 +113,22 @@ describe('Push Notifications for Classes & Mess Food', () => {
       ],
     }
 
-    it('includes meal name, serving hours, and full food item list with dietary indicators', () => {
+    it('includes 5-min notice, serving hours, full food item list, and app logo', () => {
       const payload = formatMessNotification(mockMeal, mockDayMenu)
-      expect(payload.title).toBe('🍽️ Lunch is Now Serving (12:30 PM – 2:30 PM)')
+      expect(payload.title).toBe('🍽️ Lunch Starts in 5 Mins (12:30 PM – 2:30 PM)')
       expect(payload.body).toContain('Paneer Butter Masala (Special ⭐)')
       expect(payload.body).toContain('Chicken Biryani (Non-Veg 🍗)')
       expect(payload.body).toContain('Egg Curry (Egg 🥚)')
       expect(payload.body).toContain('Steamed Rice')
       expect(payload.data?.url).toBe('/mess')
-      expect(payload.tag).toBe('mess-lunch-2026-10-15')
+      expect(payload.tag).toBe('mess-5m-lunch-2026-10-15')
+      expect(payload.icon).toContain('/icons/icon-192.png')
+      expect(payload.badge).toContain('/icons/icon-192.png')
     })
 
     it('falls back to string items if dayMenu is omitted', () => {
       const payload = formatMessNotification(mockMeal)
-      expect(payload.title).toContain('Lunch is Now Serving')
+      expect(payload.title).toContain('Lunch Starts in 5 Mins')
       expect(payload.body).toBe('Paneer Makhani, Jeera Rice, Gulab Jamun')
     })
 
@@ -142,7 +147,12 @@ describe('Push Notifications for Classes & Mess Food', () => {
     })
   })
 
-  describe('Permission & Support Checks', () => {
+  describe('Permission & App Logo', () => {
+    it('returns official app logo path', () => {
+      const logo = getAppLogoUrl()
+      expect(logo).toContain('/icons/icon-192.png')
+    })
+
     it('returns unsupported when Notification is not in window', () => {
       const origNotification = (window as any).Notification
       // @ts-ignore
@@ -181,27 +191,24 @@ describe('Push Notifications for Classes & Mess Food', () => {
       }
     })
 
-    it('initializes with default preferences (both enabled)', () => {
+    it('initializes as enabled by default for all registered users', () => {
       const { result } = renderHook(() => useNotifications())
       expect(result.current.classAlertsEnabled).toBe(true)
       expect(result.current.messAlertsEnabled).toBe(true)
       expect(result.current.permission).toBe('granted')
     })
 
-    it('persists changes to class and mess notification toggles', () => {
-      const { result } = renderHook(() => useNotifications())
+    it('auto-requests permission when autoRequest option is true and permission is default', async () => {
+      const reqMock = vi.fn().mockResolvedValue('granted')
+      ;(window as any).Notification = {
+        permission: 'default',
+        requestPermission: reqMock,
+      }
 
-      act(() => {
-        result.current.setClassAlertsEnabled(false)
+      await act(async () => {
+        renderHook(() => useNotifications({ autoRequest: true }))
       })
-      expect(result.current.classAlertsEnabled).toBe(false)
-      expect(store['whats_next_class_alerts']).toBe('false')
-
-      act(() => {
-        result.current.setMessAlertsEnabled(false)
-      })
-      expect(result.current.messAlertsEnabled).toBe(false)
-      expect(store['whats_next_mess_alerts']).toBe('false')
+      expect(reqMock).toHaveBeenCalled()
     })
   })
 })

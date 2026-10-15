@@ -23,6 +23,16 @@ export async function requestNotificationPermission(): Promise<NotificationPermi
   }
 }
 
+/**
+ * Returns full URL to the official What's Next app logo
+ */
+export function getAppLogoUrl(): string {
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return `${window.location.origin}/icons/icon-192.png`
+  }
+  return '/icons/icon-192.png'
+}
+
 export interface NotificationPayload {
   title: string
   body: string
@@ -34,7 +44,7 @@ export interface NotificationPayload {
 }
 
 /**
- * Format a rich notification for when a new class starts
+ * Format a rich notification dispatched 5 minutes before class starts
  */
 export function formatClassNotification(session: ResolvedSession): NotificationPayload {
   const courseName = session.course?.name || session.course_id || 'Class Session'
@@ -43,23 +53,24 @@ export function formatClassNotification(session: ResolvedSession): NotificationP
   const sessionInfo = session.session_no
     ? `Session ${session.session_no}${session.course?.total_sessions ? ` of ${session.course.total_sessions}` : ''}`
     : ''
-  const timeWindow = `${formatTime12(session.start_time)} – ${formatTime12(session.end_time)}`
+  const startTime = formatTime12(session.start_time)
+  const logo = getAppLogoUrl()
 
-  const bodyParts = [room, sessionInfo, faculty, timeWindow].filter(Boolean)
+  const bodyParts = [`Starts at ${startTime}`, room, sessionInfo, faculty].filter(Boolean)
 
   return {
-    title: `📚 Class Starting: ${courseName}`,
+    title: `📚 Class in 5 Mins: ${courseName}`,
     body: bodyParts.join(' · '),
-    tag: `class-${session.id}`,
-    icon: '/icons/icon-192.png',
-    badge: '/icons/icon-192.png',
+    tag: `class-5m-${session.id}`,
+    icon: logo,
+    badge: logo,
     data: { url: '/timetable' },
     vibrate: [150, 80, 150],
   }
 }
 
 /**
- * Format a rich notification for when a new mess meal starts, including the food items!
+ * Format a rich notification dispatched 5 minutes before mess meal starts, including the food items!
  */
 export function formatMessNotification(
   meal: MessMenu,
@@ -93,12 +104,14 @@ export function formatMessNotification(
     dishesText = dishesText.slice(0, 137) + '...'
   }
 
+  const logo = getAppLogoUrl()
+
   return {
-    title: `🍽️ ${mealName} is Now Serving (${timeWindow})`,
+    title: `🍽️ ${mealName} Starts in 5 Mins (${timeWindow})`,
     body: dishesText,
-    tag: `mess-${meal.meal}-${meal.date || ''}`,
-    icon: '/icons/icon-192.png',
-    badge: '/icons/icon-192.png',
+    tag: `mess-5m-${meal.meal}-${meal.date || ''}`,
+    icon: logo,
+    badge: logo,
     data: { url: '/mess' },
     vibrate: [200, 100, 200],
   }
@@ -106,11 +119,14 @@ export function formatMessNotification(
 
 /**
  * Dispatch local notification via Service Worker registration (or fallback window Notification)
+ * using the official What's Next app logo
  */
 export async function sendLocalNotification(payload: NotificationPayload): Promise<boolean> {
   if (!isNotificationSupported() || Notification.permission !== 'granted') {
     return false
   }
+
+  const logo = getAppLogoUrl()
 
   try {
     if ('serviceWorker' in navigator) {
@@ -118,8 +134,8 @@ export async function sendLocalNotification(payload: NotificationPayload): Promi
       if (reg && 'showNotification' in reg) {
         await reg.showNotification(payload.title, {
           body: payload.body,
-          icon: payload.icon || '/icons/icon-192.png',
-          badge: payload.badge || '/icons/icon-192.png',
+          icon: payload.icon || logo,
+          badge: payload.badge || logo,
           tag: payload.tag || 'whats-next-alert',
           data: payload.data || { url: '/' },
           // @ts-ignore vibrate in NotificationOptions
@@ -132,7 +148,7 @@ export async function sendLocalNotification(payload: NotificationPayload): Promi
     // Fallback for desktop browser without service worker
     new Notification(payload.title, {
       body: payload.body,
-      icon: payload.icon || '/icons/icon-192.png',
+      icon: payload.icon || logo,
       tag: payload.tag,
       data: payload.data,
     })
