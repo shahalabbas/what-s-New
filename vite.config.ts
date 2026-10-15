@@ -40,6 +40,7 @@ export default defineConfig({
         ],
       },
       workbox: {
+        importScripts: ['/sw-custom.js'],
         cleanupOutdatedCaches: true,
         clientsClaim: true,
         skipWaiting: true,

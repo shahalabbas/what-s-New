@@ -7,6 +7,8 @@ import { useSchedule } from '../../hooks/useSchedule'
 import { useMessMenu } from '../../hooks/useMessMenu'
 import { useProjects } from '../../hooks/useProjects'
 import { useNow } from '../../hooks/useNow'
+import { useNotifications } from '../../hooks/useNotifications'
+import toast from 'react-hot-toast'
 import {
   formatTime12,
   dayOffsetIST,
@@ -45,6 +47,11 @@ export function Dashboard() {
   const { user, profile, signOut } = useAuth()
   const { themePref, setTheme } = useTheme()
   useNow()
+  const notifications = useNotifications({
+    sessions: schedule.todaySessions,
+    messMenus: mess.menus,
+    dayMenus: mess.todayDayMenus,
+  })
 
   // Pull-to-refresh state
   const [pullY, setPullY] = useState(0)
@@ -700,6 +707,149 @@ export function Dashboard() {
                 <span>🎓 I am Placed</span>
               </button>
             </div>
+          </div>
+
+          {/* Push Notifications Setting & Test Card */}
+          <div className="bg-surface/70 dark:bg-white/5 rounded-2xl p-4 border border-border/80 space-y-3">
+            <div className="space-y-0.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-primary-text flex items-center gap-1.5">
+                  <span>🔔</span>
+                  <span>Push Notifications</span>
+                </span>
+                <span
+                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                    notifications.permission === 'granted'
+                      ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                      : notifications.permission === 'denied'
+                      ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300'
+                      : notifications.permission === 'unsupported'
+                      ? 'bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-slate-300'
+                      : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
+                  }`}
+                >
+                  {notifications.permission === 'granted'
+                    ? 'Active'
+                    : notifications.permission === 'denied'
+                    ? 'Blocked'
+                    : notifications.permission === 'unsupported'
+                    ? 'Add to Home'
+                    : 'Setup Needed'}
+                </span>
+              </div>
+              <p className="text-[11px] text-secondary-text">
+                Receive instant alerts on your phone when new class hours begin and when mess meals start with the food menu.
+              </p>
+            </div>
+
+            {notifications.permission !== 'granted' ? (
+              <div className="pt-1">
+                {notifications.permission === 'unsupported' ? (
+                  <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-800 dark:text-amber-300 space-y-1">
+                    <p className="font-semibold">📲 iOS / iPhone Home Screen Required</p>
+                    <p>To enable notifications on iPhone, tap Safari’s Share button ⎋ and choose <strong>"Add to Home Screen"</strong>, then open What’s Next from your home screen.</p>
+                  </div>
+                ) : notifications.permission === 'denied' ? (
+                  <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-[11px] text-rose-800 dark:text-rose-300 space-y-1">
+                    <p className="font-semibold">⚠️ Notifications Blocked</p>
+                    <p>Please allow notifications in your browser or phone site permissions to receive class & mess alerts.</p>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const res = await notifications.requestPermission()
+                      if (res === 'granted') {
+                        toast.success('Notifications enabled! Class and mess alerts are active.')
+                      } else if (res === 'denied') {
+                        toast.error('Permission was denied in browser.')
+                      }
+                    }}
+                    className="w-full py-2.5 px-3 rounded-xl bg-accent text-white text-xs font-bold shadow-xs hover:bg-accent/90 transition-all flex items-center justify-center gap-1.5"
+                  >
+                    <span>🔔</span>
+                    <span>Enable Phone Notifications</span>
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-2.5 pt-1">
+                {/* Toggles */}
+                <div className="flex items-center justify-between py-1.5 border-b border-border/50 dark:border-white/5">
+                  <div className="space-y-0.5 pr-2">
+                    <p className="text-xs font-semibold text-primary-text">📚 Class Starting Alerts</p>
+                    <p className="text-[10px] text-secondary-text">Notifies at new session start (room, faculty, timing)</p>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={notifications.classAlertsEnabled}
+                    onClick={() => notifications.setClassAlertsEnabled(!notifications.classAlertsEnabled)}
+                    className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                      notifications.classAlertsEnabled ? 'bg-accent' : 'bg-slate-300 dark:bg-white/20'
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                        notifications.classAlertsEnabled ? 'translate-x-4' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-between py-1.5 border-b border-border/50 dark:border-white/5">
+                  <div className="space-y-0.5 pr-2">
+                    <p className="text-xs font-semibold text-primary-text">🍽️ Mess Food Serving Alerts</p>
+                    <p className="text-[10px] text-secondary-text">Notifies at meal start with the full food dishes</p>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={notifications.messAlertsEnabled}
+                    onClick={() => notifications.setMessAlertsEnabled(!notifications.messAlertsEnabled)}
+                    className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                      notifications.messAlertsEnabled ? 'bg-accent' : 'bg-slate-300 dark:bg-white/20'
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                        notifications.messAlertsEnabled ? 'translate-x-4' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {/* Instant Verification Triggers */}
+                <div className="space-y-1.5 pt-1">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-secondary-text">Test Phone Notifications</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const sent = await notifications.sendTestNotification('class')
+                        if (sent) toast.success('Class alert pushed!')
+                        else toast.error('Could not deliver notification')
+                      }}
+                      className="py-2 px-2.5 rounded-xl text-[11px] font-bold bg-white dark:bg-[#1C1C1E] text-slate-700 dark:text-slate-200 border border-border dark:border-white/10 hover:border-slate-300 transition-all flex items-center justify-center gap-1.5"
+                    >
+                      <span>📚 Test Class</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const sent = await notifications.sendTestNotification('mess')
+                        if (sent) toast.success('Mess alert with food pushed!')
+                        else toast.error('Could not deliver notification')
+                      }}
+                      className="py-2 px-2.5 rounded-xl text-[11px] font-bold bg-white dark:bg-[#1C1C1E] text-slate-700 dark:text-slate-200 border border-border dark:border-white/10 hover:border-slate-300 transition-all flex items-center justify-center gap-1.5"
+                    >
+                      <span>🍽️ Test Food</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="bg-surface/60 dark:bg-white/5 rounded-2xl p-4 space-y-2.5 text-xs text-secondary-text">

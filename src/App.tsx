@@ -12,8 +12,22 @@ import { MessScreen } from './features/mess/MessScreen'
 import { ProjectsScreen } from './features/projects/ProjectsScreen'
 import { PlacementsScreen } from './features/placements/PlacementsScreen'
 import { AdminScreen } from './features/admin/AdminScreen'
+import { useNotifications } from './hooks/useNotifications'
+import { useSchedule } from './hooks/useSchedule'
+import { useMessMenu } from './hooks/useMessMenu'
 
 const FEATURE_ASK = import.meta.env.VITE_FEATURE_ASK === 'true'
+
+function NotificationWatcher() {
+  const schedule = useSchedule()
+  const mess = useMessMenu()
+  useNotifications({
+    sessions: schedule.todaySessions,
+    messMenus: mess.menus,
+    dayMenus: mess.todayDayMenus,
+  })
+  return null
+}
 
 function LoadingScreen() {
   return (
@@ -77,6 +91,7 @@ export function App() {
     <div className="relative min-h-screen bg-surface">
       <Toaster position="top-center" toastOptions={{ duration: 4000 }} />
       <InstallBanner />
+      <NotificationWatcher />
 
       <Routes>
         <Route path="/" element={<Dashboard />} />
