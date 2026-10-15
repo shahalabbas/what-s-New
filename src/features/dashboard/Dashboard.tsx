@@ -760,18 +760,58 @@ export function Dashboard() {
             </div>
 
             {/* Deadline Card */}
-            <div className="p-4 rounded-2xl bg-surface border border-border space-y-1">
-              <p className="text-xs font-semibold text-secondary-text">Submission Deadline</p>
+            <div className="p-4 rounded-2xl bg-surface border border-border space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold text-secondary-text">Submission Deadline</p>
+                {(() => {
+                  const secs = secondsUntilDeadline(selectedProject.deadline)
+                  const isPast = secs <= 0
+                  const isCritical = secs > 0 && secs < 3600 * 12
+                  return (
+                    <span className={`text-xs font-bold ${isPast ? 'text-secondary-text' : isCritical ? 'text-rose-600 animate-pulse' : secs < 86400 * 2 ? 'text-amber-700' : 'text-soon'}`}>
+                      {isPast ? 'Deadline passed' : `${formatDuration(secs)} remaining`}
+                    </span>
+                  )
+                })()}
+              </div>
               <p className="text-sm font-bold text-primary-text">
                 {formatDeadline(selectedProject.deadline)}
               </p>
               {(() => {
                 const secs = secondsUntilDeadline(selectedProject.deadline)
                 const isPast = secs <= 0
+                const isCritical = secs > 0 && secs < 3600 * 12
+                const isUrgent = secs > 0 && secs < 86400
+                const isWarm = secs >= 86400 && secs < 86400 * 2
+
+                let progress = 100
+                if (!isPast) {
+                  if (secs < 3600 * 2) progress = 96 + Math.round((1 - secs / (2 * 3600)) * 3)
+                  else if (secs < 3600 * 6) progress = 90 + Math.round((1 - secs / (6 * 3600)) * 6)
+                  else if (secs < 3600 * 12) progress = 82 + Math.round((1 - secs / (12 * 3600)) * 8)
+                  else if (secs < 3600 * 24) progress = 70 + Math.round((1 - secs / (24 * 3600)) * 12)
+                  else if (secs < 3600 * 48) progress = 48 + Math.round((1 - secs / (48 * 3600)) * 22)
+                  else if (secs < 3600 * 24 * 7) progress = 18 + Math.round((1 - secs / (7 * 86400)) * 30)
+                  else progress = 12
+                }
+
                 return (
-                  <p className={`text-xs font-bold ${isPast ? 'text-secondary-text' : secs < 86400 * 2 ? 'text-danger' : 'text-soon'}`}>
-                    {isPast ? 'Deadline passed' : `${formatDuration(secs)} remaining`}
-                  </p>
+                  <div className="w-full bg-slate-200/70 h-2 rounded-full overflow-hidden mt-1">
+                    <div
+                      className={`h-full rounded-full transition-all duration-500 ${
+                        isPast
+                          ? 'bg-slate-300'
+                          : isCritical
+                          ? 'bg-gradient-to-r from-rose-500 via-amber-400 to-rose-600 shadow-[0_0_10px_rgba(244,63,94,0.7)] animate-pulse'
+                          : isUrgent
+                          ? 'bg-gradient-to-r from-amber-500 to-rose-500'
+                          : isWarm
+                          ? 'bg-gradient-to-r from-amber-400 to-amber-500'
+                          : 'bg-gradient-to-r from-emerald-400 to-teal-500'
+                      }`}
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
                 )
               })()}
             </div>
@@ -1507,14 +1547,46 @@ function DashboardProjectsSection({
         {sortedProjects.map((item) => {
           const secs = secondsUntilDeadline(item.deadline)
           const isPast = secs <= 0
-          const isUrgent = secs > 0 && secs < 86400 * 2
+          const isCritical = secs > 0 && secs < 3600 * 12
+          const isUrgent = secs > 0 && secs < 86400
+          const isWarm = secs >= 86400 && secs < 86400 * 2
           const typeConfig = TYPE_COLORS[item.type] || {
             bg: 'bg-slate-50 text-slate-700 border-slate-200/60',
             label: item.type,
           }
 
-          // Urgency percentage (clamped to 7 days)
-          const remainingRatio = Math.max(0, Math.min(100, Math.round((secs / (7 * 86400)) * 100)))
+          // Calculate progress towards submission deadline (0 to 100%)
+          // High fill as deadline approaches; 100% when passed
+          let submissionProgress = 100
+          if (!isPast) {
+            if ((item as any).created_at) {
+              try {
+                const created = new Date((item as any).created_at).getTime()
+                const target = new Date(item.deadline).getTime()
+                const span = target - created
+                if (span >= 86400 * 1000 && Date.now() >= created) {
+                  submissionProgress = Math.min(99, Math.max(8, Math.round(((Date.now() - created) / span) * 100)))
+                }
+              } catch {}
+            }
+            if (submissionProgress === 100) {
+              if (secs < 3600 * 2) {
+                submissionProgress = 96 + Math.round((1 - secs / (2 * 3600)) * 3)
+              } else if (secs < 3600 * 6) {
+                submissionProgress = 90 + Math.round((1 - secs / (6 * 3600)) * 6)
+              } else if (secs < 3600 * 12) {
+                submissionProgress = 82 + Math.round((1 - secs / (12 * 3600)) * 8)
+              } else if (secs < 3600 * 24) {
+                submissionProgress = 70 + Math.round((1 - secs / (24 * 3600)) * 12)
+              } else if (secs < 3600 * 48) {
+                submissionProgress = 48 + Math.round((1 - secs / (48 * 3600)) * 22)
+              } else if (secs < 3600 * 24 * 7) {
+                submissionProgress = 18 + Math.round((1 - secs / (7 * 86400)) * 30)
+              } else {
+                submissionProgress = 12
+              }
+            }
+          }
 
           return (
             <motion.div
@@ -1522,7 +1594,13 @@ function DashboardProjectsSection({
               data-testid="dashboard-project-card"
               whileTap={{ scale: 0.985 }}
               onClick={() => onSelectProject(item)}
-              className="min-h-[104px] max-h-[104px] h-[104px] snap-start rounded-[22px] bg-white border border-slate-200/80 shadow-bento hover:border-slate-300 p-3.5 cursor-pointer flex flex-col justify-between transition-all select-none"
+              className={`min-h-[104px] max-h-[104px] h-[104px] snap-start rounded-[22px] bg-white p-3.5 cursor-pointer flex flex-col justify-between transition-all select-none ${
+                isCritical
+                  ? 'border border-rose-200/90 shadow-[0_4px_16px_-4px_rgba(244,63,94,0.14)] hover:border-rose-300'
+                  : isUrgent
+                  ? 'border border-amber-200/80 shadow-bento hover:border-amber-300'
+                  : 'border border-slate-200/80 shadow-bento hover:border-slate-300'
+              }`}
             >
               {/* Row 1: Course code badge + Type badge + Urgency Countdown Chip */}
               <div className="flex items-center justify-between gap-2">
@@ -1543,16 +1621,29 @@ function DashboardProjectsSection({
                   className={`flex-shrink-0 text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1.5 ${
                     isPast
                       ? 'bg-slate-100 text-slate-500 border border-slate-200/60'
-                      : isUrgent
-                      ? 'bg-rose-50 text-rose-700 border border-rose-200/80 shadow-2xs animate-pulse'
-                      : 'bg-slate-100 text-slate-700 border border-slate-200/80 shadow-2xs'
+                      : isCritical
+                      ? 'bg-rose-50 text-rose-700 border border-rose-200/90 shadow-2xs'
+                      : isUrgent || isWarm
+                      ? 'bg-amber-50 text-amber-800 border border-amber-200/80 shadow-2xs'
+                      : 'bg-emerald-50 text-emerald-800 border border-emerald-200/80 shadow-2xs'
                   }`}
                 >
-                  <span
-                    className={`w-1.5 h-1.5 rounded-full ${
-                      isPast ? 'bg-slate-400' : isUrgent ? 'bg-rose-500' : 'bg-emerald-500'
-                    }`}
-                  />
+                  {isCritical ? (
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500" />
+                    </span>
+                  ) : (
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full ${
+                        isPast
+                          ? 'bg-slate-400'
+                          : isUrgent || isWarm
+                          ? 'bg-amber-500'
+                          : 'bg-emerald-500'
+                      }`}
+                    />
+                  )}
                   <span>{isPast ? 'Passed' : formatDuration(secs) + ' left'}</span>
                 </span>
               </div>
@@ -1562,24 +1653,38 @@ function DashboardProjectsSection({
                 {item.title}
               </h3>
 
-              {/* Row 3: Slim Urgency Line + Formatted date & group size */}
+              {/* Row 3: Submission Progress Bar with Reaching-Deadline Effects + Date */}
               <div>
-                <div className="w-full bg-slate-100 h-1 rounded-full overflow-hidden mb-1.5">
+                {/* Progress Track */}
+                <div className="relative w-full bg-slate-100 h-1.5 rounded-full overflow-hidden mb-1.5">
                   <div
-                    className={`h-full rounded-full transition-all ${
+                    className={`h-full rounded-full transition-all duration-500 ${
                       isPast
-                        ? 'bg-slate-400'
+                        ? 'bg-slate-300'
+                        : isCritical
+                        ? 'bg-gradient-to-r from-rose-500 via-amber-400 to-rose-600 shadow-[0_0_10px_rgba(244,63,94,0.7)] animate-pulse'
                         : isUrgent
-                        ? 'bg-rose-500'
-                        : 'bg-emerald-500'
+                        ? 'bg-gradient-to-r from-amber-500 to-rose-500 shadow-[0_0_6px_rgba(245,158,11,0.5)]'
+                        : isWarm
+                        ? 'bg-gradient-to-r from-amber-400 to-amber-500'
+                        : 'bg-gradient-to-r from-emerald-400 to-teal-500'
                     }`}
-                    style={{ width: `${isPast ? 100 : remainingRatio}%` }}
+                    style={{ width: `${submissionProgress}%` }}
                   />
                 </div>
 
-                <div className="flex items-center justify-between text-[11px] text-slate-500 font-medium">
-                  <span className="truncate">
-                    Due {formatDeadline(item.deadline)}
+                <div className="flex items-center justify-between text-[11px] font-medium">
+                  <span
+                    className={`truncate flex items-center gap-1 ${
+                      isCritical
+                        ? 'text-rose-600 font-bold'
+                        : isUrgent
+                        ? 'text-amber-800 font-semibold'
+                        : 'text-slate-500'
+                    }`}
+                  >
+                    {isCritical && <span className="text-[10px]">⏰</span>}
+                    <span>Due {formatDeadline(item.deadline)}</span>
                   </span>
                   {item.group_size > 1 ? (
                     <span className="text-[10px] font-medium text-slate-600 flex-shrink-0">

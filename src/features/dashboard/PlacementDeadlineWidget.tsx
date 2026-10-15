@@ -240,7 +240,7 @@ export function PlacementDeadlineWidget({
                 {/* Row 2: Deadline date + Direct Apply & Status Action */}
                 <div className="flex items-center justify-between gap-2 text-[11px] pt-1.5 border-t border-slate-100">
                   <span className="text-slate-500 font-medium truncate">
-                    {opp.deadline_at ? `Closes ${formatPlacementDeadline(opp.deadline_at)}` : 'Open for applications'}
+                    {opp.deadline_at ? formatPlacementDeadline(opp.deadline_at) : 'Open for applications'}
                   </span>
 
                   <div className="flex items-center gap-1.5 flex-shrink-0">
