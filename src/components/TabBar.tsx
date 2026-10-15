@@ -69,8 +69,8 @@ export function TabBar({ isAdmin }: TabBarProps) {
     : tabs
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-border safe-bottom">
-      <div className="flex items-center h-16 max-w-md mx-auto px-1">
+    <nav className="fixed bottom-0 left-0 right-0 z-30 bg-white/90 backdrop-blur-xl border-t border-slate-200/70 shadow-[0_-4px_20px_rgba(0,0,0,0.04)] safe-bottom">
+      <div className="flex items-center h-16 max-w-md mx-auto px-2">
         {visibleTabs.map((tab) => {
           const isActive = tab.path === '/'
             ? location.pathname === '/'
@@ -79,19 +79,21 @@ export function TabBar({ isAdmin }: TabBarProps) {
             <NavLink
               key={tab.path}
               to={tab.path}
-              className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2 relative"
+              className="flex-1 flex flex-col items-center justify-center gap-1 py-1.5 relative transition-all active:scale-95"
             >
               {isActive && (
                 <motion.div
                   layoutId="tab-indicator"
-                  className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-accent rounded-full"
+                  className="absolute -top-[1px] left-1/2 -translate-x-1/2 w-8 h-[2.5px] bg-accent rounded-full shadow-[0_1px_6px_rgba(10,132,255,0.4)]"
                   transition={spring}
                 />
               )}
-              <tab.Icon filled={isActive} />
+              <div className={`transition-transform duration-150 ${isActive ? 'scale-105' : 'scale-100 opacity-75'}`}>
+                <tab.Icon filled={isActive} />
+              </div>
               <span
-                className={`text-[10px] font-medium tracking-tight truncate ${
-                  isActive ? 'text-accent font-semibold' : 'text-secondary-text'
+                className={`text-[10px] tracking-tight truncate transition-colors ${
+                  isActive ? 'text-accent font-bold' : 'text-slate-500 font-medium'
                 }`}
               >
                 {tab.label}

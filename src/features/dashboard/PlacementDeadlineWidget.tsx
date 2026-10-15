@@ -100,12 +100,14 @@ export function PlacementDeadlineWidget({
 
   return (
     <>
-      <section className="bg-white rounded-[26px] border border-slate-100 shadow-2xs p-4.5 space-y-2.5">
+      <section className="bg-white rounded-[24px] border border-slate-200/80 shadow-bento p-4 space-y-2.5">
         {/* Section Header with roller controls and layout swap */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-sm">💼</span>
-            <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
+            <svg className="w-4 h-4 text-slate-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+            <h2 className="text-[11px] font-black uppercase tracking-wider text-slate-400">
               Placement Opportunities
             </h2>
             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200/60">
@@ -178,26 +180,28 @@ export function PlacementDeadlineWidget({
 
             const urgencyStyles = {
               normal: {
-                cardBg: 'bg-slate-50/70 hover:bg-slate-50/95 border-slate-200/70',
-                badgeBg: 'bg-slate-800 text-white',
-                icon: '⏱️',
+                cardBg: 'bg-slate-50/70 hover:bg-slate-50 border-slate-200/70',
+                badgeBg: 'bg-white text-slate-800 border border-slate-200/80 shadow-2xs',
+                dotColor: 'bg-slate-400',
               },
               warm: {
-                cardBg: 'bg-gradient-to-r from-amber-50/70 to-orange-50/40 hover:bg-amber-50 border-amber-200/90',
-                badgeBg: 'bg-amber-500 text-white shadow-xs shadow-amber-500/20',
-                icon: '⏳',
+                cardBg: 'bg-amber-50/40 hover:bg-amber-50/70 border-amber-200/80',
+                badgeBg: 'bg-amber-100/80 text-amber-800 border border-amber-300/60 shadow-2xs',
+                dotColor: 'bg-amber-500',
               },
               urgent: {
-                cardBg: 'bg-gradient-to-r from-rose-50/80 to-amber-50/40 hover:bg-rose-50 border-rose-200/90',
-                badgeBg: 'bg-rose-500 text-white shadow-xs shadow-rose-500/30 animate-pulse',
-                icon: '🔥',
+                cardBg: 'bg-rose-50/40 hover:bg-rose-50/70 border-rose-200/80',
+                badgeBg: 'bg-rose-100 text-rose-800 border border-rose-300/60 shadow-2xs animate-pulse',
+                dotColor: 'bg-rose-500',
               },
               closed: {
-                cardBg: 'bg-slate-50/50 border-slate-200 opacity-75',
-                badgeBg: 'bg-slate-400 text-white',
-                icon: '🔒',
+                cardBg: 'bg-slate-50/40 border-slate-200 opacity-70',
+                badgeBg: 'bg-slate-200 text-slate-600 border border-slate-300/60',
+                dotColor: 'bg-slate-400',
               },
             }[countdown.urgency]
+
+            const companyInitial = opp.company ? opp.company.charAt(0).toUpperCase() : 'C'
 
             return (
               <motion.div
@@ -208,55 +212,66 @@ export function PlacementDeadlineWidget({
                   if (onOpenDetail) onOpenDetail(opp)
                   else setSelectedOpp(opp)
                 }}
-                className={`min-h-[96px] max-h-[96px] h-[96px] snap-start rounded-2xl border ${urgencyStyles.cardBg} p-3 cursor-pointer flex flex-col justify-between transition-all hover:shadow-xs select-none`}
+                className={`min-h-[96px] max-h-[96px] h-[96px] snap-start rounded-2xl border ${urgencyStyles.cardBg} p-3 cursor-pointer flex flex-col justify-between transition-all hover:shadow-2xs select-none`}
               >
-                {/* Row 1: Company + Extra Tags + Countdown */}
+                {/* Row 1: Company Monogram + Name + Tags + Countdown */}
                 <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                    <h4 className="text-xs font-black text-slate-900 tracking-tight truncate">
-                      {opp.company}
-                    </h4>
-                    {opp.additional_details && opp.additional_details.length > 0 && (
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-white/80 text-slate-600 border border-slate-200/60 truncate max-w-[120px]">
-                        {opp.additional_details[0].value}
-                      </span>
-                    )}
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    {/* Monogram */}
+                    <div className="w-6 h-6 rounded-lg bg-white border border-slate-200/80 shadow-2xs flex items-center justify-center text-[11px] font-black text-slate-700 flex-shrink-0">
+                      {companyInitial}
+                    </div>
+
+                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                      <h4 className="text-xs font-bold text-slate-900 tracking-tight truncate">
+                        {opp.company}
+                      </h4>
+                      {opp.additional_details && opp.additional_details.length > 0 && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-white text-slate-600 border border-slate-200/60 truncate max-w-[120px]">
+                          {opp.additional_details[0].value}
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <span
-                    className={`flex-shrink-0 px-2 py-0.5 rounded-full text-[10px] font-black tracking-tight flex items-center gap-1 ${urgencyStyles.badgeBg}`}
+                    className={`flex-shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold tracking-tight flex items-center gap-1.5 ${urgencyStyles.badgeBg}`}
                   >
-                    <span className="text-[9px]">{urgencyStyles.icon}</span>
+                    <span className={`w-1.5 h-1.5 rounded-full ${urgencyStyles.dotColor}`} />
                     <span>{countdown.formatted}</span>
                   </span>
                 </div>
 
                 {/* Row 2: Role */}
-                <p className="text-[11px] font-medium text-slate-600 truncate leading-tight" title={opp.role}>
+                <p className="text-[11px] font-medium text-slate-600 truncate leading-tight pl-8" title={opp.role}>
                   {opp.role}
                 </p>
 
                 {/* Row 3: Deadline + Mark Applied Action */}
                 <div className="flex items-center justify-between gap-2 text-[10px] pt-0.5 border-t border-slate-200/50">
                   <div className="flex items-center gap-1 text-slate-500 truncate font-medium">
-                    <span>📅</span>
+                    <svg className="w-3 h-3 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
                     <span className="truncate">
                       {opp.deadline_at ? formatPlacementDeadline(opp.deadline_at) : 'Open for applications'}
                     </span>
                   </div>
 
-                  <motion.button
-                    whileTap={{ scale: 0.92 }}
-                    onClick={(e) => handleMarkApplied(e, opp.id)}
-                    className={`flex-shrink-0 px-2.5 py-0.5 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 shadow-2xs ${
-                      isApplied
-                        ? 'bg-emerald-600 text-white font-extrabold'
-                        : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
-                    }`}
-                  >
-                    <span>✓</span>
-                    <span>{isApplied ? 'Applied' : 'Mark Applied'}</span>
-                  </motion.button>
+                  <div className="flex items-center gap-1">
+                    <motion.button
+                      whileTap={{ scale: 0.92 }}
+                      onClick={(e) => handleMarkApplied(e, opp.id)}
+                      className={`flex-shrink-0 px-2.5 py-0.5 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 shadow-2xs ${
+                        isApplied
+                          ? 'bg-emerald-600 text-white font-extrabold'
+                          : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+                      }`}
+                    >
+                      <span>✓</span>
+                      <span>{isApplied ? 'Applied' : 'Mark Applied'}</span>
+                    </motion.button>
+                  </div>
                 </div>
               </motion.div>
             )

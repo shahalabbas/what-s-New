@@ -55,6 +55,14 @@
   .card-press {
     @apply transition-transform duration-75 active:scale-[0.97];
   }
+
+  .bento-card {
+    @apply bg-white rounded-[24px] border border-slate-100/90 shadow-bento transition-all duration-200;
+  }
+
+  .glass-pill {
+    @apply backdrop-blur-md bg-white/80 border border-slate-200/60 shadow-2xs;
+  }
 }
 
 /* Reduced motion */

@@ -871,6 +871,10 @@ function getUpNextScheduleItem(
   subtitle: string
   pillText: string
   eventTypeBadge?: string
+  sessionNo?: number
+  totalSessions?: number
+  room?: string | null
+  venue?: string | null
 } | null {
   const { currentSession, nextSession, currentTime, extendedState, events, classSessions } = schedule
   const today = todayIST()
@@ -915,8 +919,11 @@ function getUpNextScheduleItem(
       titleDisplay,
       subtitle: facultyName
         ? (facultyName.startsWith('Prof') ? facultyName : `Prof. ${facultyName}`)
-        : (currentSession.room ? `📍 ${currentSession.room}` : ''),
+        : (currentSession.room ? `CR: ${currentSession.room}` : ''),
       pillText: `LIVE NOW · S${sessionNo}/${totalSessions}`,
+      sessionNo,
+      totalSessions,
+      room: currentSession.room,
     }
   }
 
@@ -947,10 +954,11 @@ function getUpNextScheduleItem(
         timeDisplay: formatTime12(nextTimedEventToday.timing.startTime!).replace(/\s?(AM|PM)/i, ''),
         titleDisplay: nextTimedEventToday.event.title,
         subtitle: nextTimedEventToday.event.venue
-          ? `📍 ${nextTimedEventToday.event.venue}`
+          ? nextTimedEventToday.event.venue
           : (nextTimedEventToday.event.company || formattedType),
         pillText: `${diffText} · ${formattedType}`,
         eventTypeBadge: formattedType,
+        venue: nextTimedEventToday.event.venue,
       }
     }
   } else if (nextTimedEventToday && !nextSession) {
@@ -964,10 +972,11 @@ function getUpNextScheduleItem(
       timeDisplay: formatTime12(nextTimedEventToday.timing.startTime!).replace(/\s?(AM|PM)/i, ''),
       titleDisplay: nextTimedEventToday.event.title,
       subtitle: nextTimedEventToday.event.venue
-        ? `📍 ${nextTimedEventToday.event.venue}`
+        ? nextTimedEventToday.event.venue
         : (nextTimedEventToday.event.company || formattedType),
       pillText: `${diffText} · ${formattedType}`,
       eventTypeBadge: formattedType,
+      venue: nextTimedEventToday.event.venue,
     }
   }
 
@@ -988,8 +997,11 @@ function getUpNextScheduleItem(
       titleDisplay,
       subtitle: facultyName
         ? (facultyName.startsWith('Prof') ? facultyName : `Prof. ${facultyName}`)
-        : (nextSession.room ? `📍 ${nextSession.room}` : ''),
+        : (nextSession.room ? `CR: ${nextSession.room}` : ''),
       pillText: `${diffText} · S${sessionNo}/${totalSessions}`,
+      sessionNo,
+      totalSessions,
+      room: nextSession.room,
     }
   }
 
@@ -1043,9 +1055,10 @@ function getUpNextScheduleItem(
       isLive: false,
       timeDisplay,
       titleDisplay: ev.title,
-      subtitle: ev.venue ? `📍 ${ev.venue}` : (ev.company || formattedType),
+      subtitle: ev.venue ? ev.venue : (ev.company || formattedType),
       pillText: `${earliestFutureItem.dayLabel} · ${formattedType}`,
       eventTypeBadge: formattedType,
+      venue: ev.venue,
     }
   }
 
@@ -1061,8 +1074,11 @@ function getUpNextScheduleItem(
       isLive: false,
       timeDisplay,
       titleDisplay,
-      subtitle: facultyName ? (facultyName.startsWith('Prof') ? facultyName : `Prof. ${facultyName}`) : (cs.room ? `📍 ${cs.room}` : ''),
+      subtitle: facultyName ? (facultyName.startsWith('Prof') ? facultyName : `Prof. ${facultyName}`) : (cs.room ? `CR: ${cs.room}` : ''),
       pillText: `${earliestFutureItem.dayLabel} · S${sessionNo}/${totalSessions}`,
+      sessionNo,
+      totalSessions,
+      room: cs.room,
     }
   }
 
@@ -1101,71 +1117,113 @@ function UpNextCard({
       <motion.div
         whileTap={{ scale: 0.97 }}
         onClick={onTap}
-        className="bg-white rounded-[26px] border border-slate-100 shadow-2xs p-4 flex flex-col justify-between min-h-[168px] cursor-pointer hover:border-slate-200 transition-all"
+        className="rounded-[24px] bg-white border border-slate-200/70 shadow-bento p-4 flex flex-col justify-between min-h-[172px] cursor-pointer hover:border-slate-300 transition-all select-none"
       >
         <div>
-          <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">
-            UP NEXT
+          <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">
+            Up Next
           </span>
-          <div className="text-lg font-black text-[#0F2942] tracking-tight mt-2">
+          <div className="text-base font-extrabold text-slate-900 tracking-tight mt-2">
             No Classes
           </div>
           <p className="text-xs text-slate-500 mt-1">
             Enjoy your free time!
           </p>
         </div>
-        <div className="mt-3">
-          <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-600 font-bold text-[10px] px-2.5 py-1 rounded-full">
-            All Done 🎉
+        <div>
+          <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-600 font-bold text-[10px] px-2.5 py-1 rounded-full border border-slate-200/50">
+            All Done
           </span>
         </div>
       </motion.div>
     )
   }
 
+  const sessionRatio =
+    item.sessionNo && item.totalSessions
+      ? Math.min(100, Math.round((item.sessionNo / item.totalSessions) * 100))
+      : 0
+
   return (
     <motion.div
       whileTap={{ scale: 0.97 }}
       onClick={onTap}
-      className={`rounded-[26px] border shadow-2xs p-4 flex flex-col justify-between min-h-[168px] cursor-pointer transition-all ${
+      className={`rounded-[24px] border shadow-bento p-4 flex flex-col justify-between min-h-[172px] cursor-pointer transition-all select-none ${
         item.isLive
           ? item.isEvent
-            ? 'bg-purple-50/50 border-purple-200 hover:border-purple-300'
-            : 'bg-emerald-50/40 border-emerald-200 hover:border-emerald-300'
+            ? 'bg-purple-50/60 border-purple-200 hover:border-purple-300'
+            : 'bg-emerald-50/50 border-emerald-200/90 hover:border-emerald-300'
           : item.isEvent
-          ? 'bg-white border-indigo-100/80 hover:border-indigo-200'
-          : 'bg-white border-slate-100 hover:border-slate-200'
+          ? 'bg-white border-indigo-100/90 hover:border-indigo-200'
+          : 'bg-white border-slate-200/70 hover:border-slate-300'
       }`}
     >
       <div>
-        <div className="flex items-center justify-between">
-          <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">
-            {item.isLive ? (item.isEvent ? 'CURRENT EVENT' : 'CURRENT CLASS') : item.isEvent ? 'UPCOMING EVENT' : 'UP NEXT'}
-          </span>
-          {item.isLive ? (
-            <span
-              className={`w-2 h-2 rounded-full animate-pulse ${
-                item.isEvent ? 'bg-purple-500' : 'bg-emerald-500'
-              }`}
-            />
-          ) : item.isEvent ? (
-            <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200/60">
-              {item.eventTypeBadge || 'Event'}
+        {/* Header row: Status pill + mini progress ring or room */}
+        <div className="flex items-center justify-between gap-1 mb-1">
+          <div className="flex items-center gap-1.5 min-w-0">
+            {item.isLive ? (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500 text-white text-[9px] font-black uppercase tracking-wider">
+                <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                Live Now
+              </span>
+            ) : item.isEvent ? (
+              <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200/60">
+                {item.eventTypeBadge || 'Event'}
+              </span>
+            ) : (
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                Up Next
+              </span>
+            )}
+          </div>
+
+          {/* Mini Session Progress Ring */}
+          {item.sessionNo && item.totalSessions ? (
+            <div className="flex items-center gap-1" title={`Session ${item.sessionNo} of ${item.totalSessions}`}>
+              <svg className="w-5 h-5 -rotate-90 flex-shrink-0" viewBox="0 0 36 36">
+                <path
+                  className="text-slate-100"
+                  strokeWidth="4"
+                  stroke="currentColor"
+                  fill="none"
+                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                />
+                <path
+                  className={item.isLive ? 'text-emerald-500' : 'text-accent'}
+                  strokeDasharray={`${sessionRatio}, 100`}
+                  strokeWidth="4"
+                  strokeLinecap="round"
+                  stroke="currentColor"
+                  fill="none"
+                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                />
+              </svg>
+              <span className="text-[9px] font-bold text-slate-500 font-mono">
+                {item.sessionNo}/{item.totalSessions}
+              </span>
+            </div>
+          ) : item.room ? (
+            <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+              {item.room}
             </span>
           ) : null}
         </div>
 
-        <div className="text-2xl font-black text-[#0F2942] tracking-tight mt-1 font-mono">
+        {/* Big Time Display */}
+        <div className="text-xl font-black text-slate-900 tracking-tight font-mono">
           {item.timeDisplay}
         </div>
 
+        {/* Title */}
         <h3
-          className="text-xs font-bold text-slate-800 line-clamp-1 mt-1 leading-snug"
+          className="text-xs font-bold text-slate-900 line-clamp-1 mt-1 leading-snug"
           title={item.titleDisplay}
         >
           {item.titleDisplay}
         </h3>
 
+        {/* Faculty / Venue Subtitle */}
         {item.subtitle && (
           <p className="text-[11px] font-medium text-slate-500 truncate mt-0.5">
             {item.subtitle}
@@ -1173,16 +1231,17 @@ function UpNextCard({
         )}
       </div>
 
-      <div className="mt-3">
+      {/* Footer Pill */}
+      <div className="mt-2.5">
         <span
-          className={`inline-flex items-center gap-1 font-bold text-[10px] px-2.5 py-1 rounded-full truncate max-w-full ${
+          className={`inline-flex items-center gap-1 font-bold text-[10px] px-2.5 py-1 rounded-full truncate max-w-full border ${
             item.isLive
               ? item.isEvent
-                ? 'bg-purple-100 text-purple-800'
-                : 'bg-emerald-100 text-emerald-800'
+                ? 'bg-purple-100 text-purple-800 border-purple-200'
+                : 'bg-emerald-100 text-emerald-800 border-emerald-200'
               : item.isEvent
-              ? 'bg-indigo-50 text-indigo-700 border border-indigo-100'
-              : 'bg-blue-50 text-blue-600'
+              ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+              : 'bg-slate-100 text-slate-700 border-slate-200/60'
           }`}
         >
           {item.pillText}
@@ -1210,19 +1269,22 @@ function FoodCard({
       <motion.div
         whileTap={{ scale: 0.97 }}
         onClick={onTap}
-        className="bg-[#FFF8F0] rounded-[26px] border border-[#FDE8D0]/70 shadow-2xs p-4 flex flex-col justify-between min-h-[168px] cursor-pointer hover:border-[#FDE8D0] transition-all"
+        className="rounded-[24px] bg-[#FFF9F2] border border-[#FDE8D0]/90 shadow-bento p-4 flex flex-col justify-between min-h-[172px] cursor-pointer hover:border-[#FDE8D0] transition-all select-none"
       >
         <div>
-          <span className="text-[10px] font-extrabold text-[#A05E26] uppercase tracking-wider block">
-            MESS MENU
+          <span className="text-[10px] font-black text-[#A05E26] uppercase tracking-wider block">
+            Mess Menu
           </span>
           <div className="text-sm font-extrabold text-[#422206] leading-tight truncate mt-2">
             No Menu Posted
           </div>
+          <p className="text-xs text-[#8C6239] mt-1">
+            Tap to view schedule
+          </p>
         </div>
-        <div className="mt-3">
-          <span className="bg-white rounded-xl py-1 px-2.5 shadow-2xs text-[#422206] text-[11px] font-bold inline-block">
-            Check Timings
+        <div>
+          <span className="bg-white rounded-full py-1 px-2.5 border border-[#FDE8D0] shadow-2xs text-[#422206] text-[10px] font-bold inline-block">
+            Timings
           </span>
         </div>
       </motion.div>
@@ -1248,12 +1310,18 @@ function FoodCard({
     <motion.div
       whileTap={{ scale: 0.97 }}
       onClick={onTap}
-      className="bg-[#FFF8F0] rounded-[26px] border border-[#FDE8D0]/70 shadow-2xs p-4 flex flex-col justify-between min-h-[168px] cursor-pointer hover:border-[#FDE8D0] transition-all"
+      className="rounded-[24px] bg-[#FFF9F2] border border-[#FDE8D0]/90 shadow-bento p-4 flex flex-col justify-between min-h-[172px] cursor-pointer hover:border-[#FDE8D0] transition-all select-none"
     >
       <div>
-        <span className="text-[10px] font-extrabold text-[#A05E26] uppercase tracking-wider block">
-          {mealLabel} · {mealTime}
-        </span>
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-[10px] font-black text-[#A05E26] uppercase tracking-wider block">
+            {mealLabel} · {mealTime}
+          </span>
+          {displayMeal.isNowServing && (
+            <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+          )}
+        </div>
+
         <div className="text-base font-extrabold text-[#422206] leading-tight truncate mt-1">
           {mainDish}
         </div>
@@ -1264,22 +1332,22 @@ function FoodCard({
         )}
       </div>
 
-      <div className="mt-3">
+      <div className="mt-2.5">
         {nonVegOrEggItem ? (
-          <div className="bg-white rounded-xl py-1 px-2.5 shadow-2xs text-[#422206] text-[11px] font-bold flex items-center gap-1.5 w-full max-w-full overflow-hidden">
-            <span className="w-3.5 h-3.5 rounded-[3px] border border-[#C2410C] flex items-center justify-center flex-shrink-0">
+          <div className="bg-white rounded-full py-1 px-2.5 border border-red-200/80 shadow-2xs text-[#422206] text-[10px] font-bold flex items-center gap-1.5 w-full max-w-full overflow-hidden">
+            <span className="w-3 h-3 rounded-[3px] border border-[#C2410C] flex items-center justify-center flex-shrink-0">
               <span className={`w-1.5 h-1.5 rounded-full ${nonVegOrEggItem.diet === 'non_veg' ? 'bg-[#C2410C]' : 'bg-[#D97706]'}`} />
             </span>
             <span className="truncate flex-1">{nonVegOrEggItem.name}</span>
           </div>
         ) : specialItem ? (
-          <div className="bg-white rounded-xl py-1 px-2.5 shadow-2xs text-[#422206] text-[11px] font-bold flex items-center gap-1.5 w-full max-w-full overflow-hidden">
-            <span className="flex-shrink-0">⭐</span>
+          <div className="bg-white rounded-full py-1 px-2.5 border border-amber-200/80 shadow-2xs text-[#422206] text-[10px] font-bold flex items-center gap-1.5 w-full max-w-full overflow-hidden">
+            <span className="flex-shrink-0 text-[10px]">⭐</span>
             <span className="truncate flex-1">{specialItem.name}</span>
           </div>
         ) : (
-          <div className="bg-white rounded-xl py-1 px-2.5 shadow-2xs text-[#059669] text-[11px] font-bold flex items-center gap-1.5 w-fit">
-            <span className="w-3.5 h-3.5 rounded-[3px] border border-[#059669] flex items-center justify-center flex-shrink-0">
+          <div className="bg-white rounded-full py-1 px-2.5 border border-[#059669]/30 shadow-2xs text-[#059669] text-[10px] font-bold flex items-center gap-1.5 w-fit">
+            <span className="w-3 h-3 rounded-[3px] border border-[#059669] flex items-center justify-center flex-shrink-0">
               <span className="w-1.5 h-1.5 rounded-full bg-[#059669]" />
             </span>
             <span>Pure Veg</span>
@@ -1326,12 +1394,14 @@ function DashboardProjectsSection({
   }
 
   return (
-    <section className="bg-white rounded-[26px] border border-slate-100 shadow-2xs p-4.5 space-y-2.5">
+    <section className="bg-white rounded-[24px] border border-slate-200/80 shadow-bento p-4 space-y-2.5">
       {/* Section Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-sm">📚</span>
-          <h2 className="text-xs font-extrabold text-slate-400 tracking-wider uppercase">
+          <svg className="w-4 h-4 text-slate-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+          </svg>
+          <h2 className="text-[11px] font-black text-slate-400 tracking-wider uppercase">
             Projects & Deadlines
           </h2>
           {sortedProjects.length > 0 && (
@@ -1406,24 +1476,27 @@ function DashboardProjectsSection({
               label: item.type,
             }
 
+            // Urgency percentage (clamped to 7 days)
+            const remainingRatio = Math.max(0, Math.min(100, Math.round((secs / (7 * 86400)) * 100)))
+
             return (
               <motion.div
                 key={item.id}
                 data-testid="dashboard-project-card"
                 whileTap={{ scale: 0.985 }}
                 onClick={() => onSelectProject(item)}
-                className="min-h-[96px] max-h-[96px] h-[96px] snap-start rounded-2xl bg-surface/80 hover:bg-surface border border-border/80 p-3 cursor-pointer flex flex-col justify-between transition-all hover:shadow-xs select-none"
+                className="min-h-[96px] max-h-[96px] h-[96px] snap-start rounded-2xl bg-slate-50/70 hover:bg-slate-50 border border-slate-200/70 p-3 cursor-pointer flex flex-col justify-between transition-all hover:shadow-2xs select-none"
               >
                 {/* Top Row: Type Badge + Course Tag + Countdown */}
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-1.5 flex-wrap min-w-0">
                     <span
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${typeConfig.bg}`}
+                      className={`text-[9px] font-bold px-2 py-0.5 rounded-md border ${typeConfig.bg}`}
                     >
                       {typeConfig.label}
                     </span>
                     {item.course && (
-                      <span className="text-[10px] font-semibold text-secondary-text truncate max-w-[120px]">
+                      <span className="text-[10px] font-bold font-mono text-slate-600 bg-white px-1.5 py-0.5 rounded border border-slate-200/60 truncate max-w-[120px]">
                         {item.course.code}
                       </span>
                     )}
@@ -1432,10 +1505,10 @@ function DashboardProjectsSection({
                   <span
                     className={`flex-shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full ${
                       isPast
-                        ? 'bg-slate-100 text-slate-500'
+                        ? 'bg-slate-200 text-slate-500'
                         : isUrgent
                         ? 'bg-amber-100 text-amber-800 animate-pulse'
-                        : 'bg-blue-50 text-blue-700'
+                        : 'bg-blue-50 text-blue-700 border border-blue-200/50'
                     }`}
                   >
                     {isPast ? 'Passed' : formatDuration(secs) + ' left'}
@@ -1443,35 +1516,60 @@ function DashboardProjectsSection({
                 </div>
 
                 {/* Title */}
-                <h3 className="text-xs font-bold text-primary-text truncate leading-tight">
+                <h3 className="text-xs font-bold text-slate-900 truncate leading-tight">
                   {item.title}
                 </h3>
 
-                {/* Sub-info: Formatted date & group size */}
-                <div className="flex items-center justify-between text-[10px] text-secondary-text pt-0.5 border-t border-border/50">
-                  <span className="truncate flex items-center gap-1">
-                    <span>📅</span>
-                    <span>{formatDeadline(item.deadline)}</span>
-                  </span>
-                  {item.group_size > 1 ? (
-                    <span className="text-[10px] font-medium text-slate-500 flex-shrink-0">
-                      👥 Group of {item.group_size}
+                {/* Sub-info: Formatted date & group size + Progress urgency bar */}
+                <div>
+                  <div className="w-full bg-slate-200/60 h-1 rounded-full overflow-hidden mb-1.5">
+                    <div
+                      className={`h-full rounded-full transition-all ${
+                        isPast
+                          ? 'bg-slate-400'
+                          : isUrgent
+                          ? 'bg-rose-500'
+                          : 'bg-emerald-500'
+                      }`}
+                      style={{ width: `${isPast ? 100 : remainingRatio}%` }}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between text-[10px] text-slate-500">
+                    <span className="truncate flex items-center gap-1">
+                      <svg className="w-3 h-3 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <span>{formatDeadline(item.deadline)}</span>
                     </span>
-                  ) : (
-                    <span className="text-[10px] font-medium text-slate-400 flex-shrink-0">
-                      👤 Individual
-                    </span>
-                  )}
+                    {item.group_size > 1 ? (
+                      <span className="text-[10px] font-medium text-slate-600 flex-shrink-0 flex items-center gap-1">
+                        <svg className="w-3 h-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                        <span>Group of {item.group_size}</span>
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-medium text-slate-400 flex-shrink-0 flex items-center gap-1">
+                        <svg className="w-3 h-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                        <span>Individual</span>
+                      </span>
+                    )}
+                  </div>
                 </div>
               </motion.div>
             )
           })}
         </div>
       ) : (
-        <div className="py-5 text-center bg-surface/50 rounded-2xl border border-dashed border-border space-y-1.5">
-          <span className="text-2xl">🎉</span>
-          <p className="text-xs font-bold text-primary-text">No Upcoming Deadlines</p>
-          <p className="text-[11px] text-secondary-text">You're completely caught up on assignments.</p>
+        <div className="py-6 text-center bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 space-y-1">
+          <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center mx-auto text-slate-400 mb-1">
+            ✨
+          </div>
+          <p className="text-xs font-bold text-slate-800">No Upcoming Deadlines</p>
+          <p className="text-[11px] text-slate-500">You're completely caught up on assignments.</p>
         </div>
       )}
     </section>
