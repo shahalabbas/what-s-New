@@ -83,7 +83,7 @@ export function LoginScreen({ onLogin, onSimulateEmailLogin, domainError }: Logi
   ]
 
   return (
-    <div className="min-h-screen bg-[#FBFBFD] flex flex-col justify-between px-6 py-10 safe-top safe-bottom select-none">
+    <div className="min-h-screen bg-[#FBFBFD] dark:bg-black flex flex-col justify-between px-6 py-10 safe-top safe-bottom select-none">
       {/* ── TOP: Campus Badge & App Branding ── */}
       <motion.div
         initial={{ opacity: 0, y: -16 }}
@@ -92,9 +92,9 @@ export function LoginScreen({ onLogin, onSimulateEmailLogin, domainError }: Logi
         className="flex flex-col items-center text-center pt-2"
       >
         {/* Institute Pill */}
-        <div className="inline-flex items-center gap-1.5 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-black/[0.04] px-3.5 py-1 rounded-full mb-5">
+        <div className="inline-flex items-center gap-1.5 bg-white dark:bg-[#1C1C1E] shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-black/[0.04] dark:border-white/10 px-3.5 py-1 rounded-full mb-5">
           <span className="w-1.5 h-1.5 rounded-full bg-[#0A84FF]" />
-          <span className="text-[11px] font-bold tracking-wider text-[#6E6E73] uppercase">
+          <span className="text-[11px] font-bold tracking-wider text-[#6E6E73] dark:text-[#8E8E93] uppercase">
             IIM Udaipur
           </span>
         </div>
@@ -110,10 +110,10 @@ export function LoginScreen({ onLogin, onSimulateEmailLogin, domainError }: Logi
         </motion.div>
 
         {/* App Title & Tagline */}
-        <h1 className="text-[32px] font-extrabold text-[#1D1D1F] tracking-tight leading-none">
+        <h1 className="text-[32px] font-extrabold text-[#1D1D1F] dark:text-white tracking-tight leading-none">
           What's Next
         </h1>
-        <p className="text-sm font-medium text-[#6E6E73] mt-2 max-w-[260px] leading-snug">
+        <p className="text-sm font-medium text-[#6E6E73] dark:text-[#8E8E93] mt-2 max-w-[260px] leading-snug">
           Your daily campus companion for classes, meals & prep
         </p>
       </motion.div>
@@ -131,17 +131,17 @@ export function LoginScreen({ onLogin, onSimulateEmailLogin, domainError }: Logi
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ ...springGentle, delay: 0.15 + i * 0.04 }}
-            className={`bg-white/80 backdrop-blur-md rounded-[20px] p-3.5 border ${f.border} shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex flex-col justify-between min-h-[105px]`}
+            className={`bg-white/80 dark:bg-[#1C1C1E]/90 backdrop-blur-md rounded-[20px] p-3.5 border ${f.border} dark:border-white/10 shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex flex-col justify-between min-h-[105px]`}
           >
             <div className="flex items-center justify-between">
               <span className="text-2xl">{f.icon}</span>
               <div className={`w-2 h-2 rounded-full bg-gradient-to-br ${f.color}`} />
             </div>
             <div>
-              <h3 className="text-xs font-bold text-[#1D1D1F] leading-tight">
+              <h3 className="text-xs font-bold text-[#1D1D1F] dark:text-white leading-tight">
                 {f.title}
               </h3>
-              <p className="text-[10px] font-medium text-[#86868B] leading-tight mt-1 line-clamp-2">
+              <p className="text-[10px] font-medium text-[#86868B] dark:text-[#8E8E93] leading-tight mt-1 line-clamp-2">
                 {f.desc}
               </p>
             </div>
@@ -178,7 +178,7 @@ export function LoginScreen({ onLogin, onSimulateEmailLogin, domainError }: Logi
           transition={spring}
           onClick={handleGoogleClick}
           disabled={isLoading}
-          className="w-full h-[54px] bg-[#1D1D1F] hover:bg-[#2C2C2E] active:bg-[#000000] text-white rounded-[18px] font-semibold text-sm flex items-center justify-center gap-3 shadow-[0_4px_16px_rgba(0,0,0,0.12)] transition-all disabled:opacity-75 relative overflow-hidden cursor-pointer"
+          className="w-full h-[54px] bg-[#1D1D1F] dark:bg-white hover:bg-[#2C2C2E] dark:hover:bg-slate-200 active:bg-[#000000] text-white dark:text-black rounded-[18px] font-semibold text-sm flex items-center justify-center gap-3 shadow-[0_4px_16px_rgba(0,0,0,0.12)] transition-all disabled:opacity-75 relative overflow-hidden cursor-pointer"
         >
           {isLoading ? (
             <div className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
@@ -200,12 +200,12 @@ export function LoginScreen({ onLogin, onSimulateEmailLogin, domainError }: Logi
         </button>
 
         {/* Security badge */}
-        <div className="flex items-center justify-center gap-1.5 text-[11px] text-[#86868B]">
+        <div className="flex items-center justify-center gap-1.5 text-[11px] text-[#86868B] dark:text-[#8E8E93]">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" className="text-[#34C759]">
             <rect x="3" y="11" width="18" height="11" rx="2" ry="2" stroke="currentColor" strokeWidth="2"/>
             <path d="M7 11V7a5 5 0 0110 0v4" stroke="currentColor" strokeWidth="2"/>
           </svg>
-          <span>Restricted to verified <strong className="text-[#1D1D1F]">@{DOMAIN}</strong> accounts</span>
+          <span>Restricted to verified <strong className="text-[#1D1D1F] dark:text-white">@{DOMAIN}</strong> accounts</span>
         </div>
       </motion.div>
 
@@ -218,7 +218,7 @@ export function LoginScreen({ onLogin, onSimulateEmailLogin, domainError }: Logi
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 40, scale: 0.96 }}
               transition={springGentle}
-              className="bg-white rounded-[28px] p-6 max-w-sm w-full shadow-2xl space-y-4 border border-border"
+              className="bg-white dark:bg-[#1C1C1E] rounded-[28px] p-6 max-w-sm w-full shadow-2xl space-y-4 border border-border dark:border-white/10"
             >
               {/* Header */}
               <div className="flex items-center justify-between border-b border-border/70 pb-3.5">
@@ -227,14 +227,14 @@ export function LoginScreen({ onLogin, onSimulateEmailLogin, domainError }: Logi
                     🎓
                   </div>
                   <div>
-                    <h3 className="font-semibold text-sm text-[#1D1D1F]">IIM Udaipur Account</h3>
-                    <p className="text-[11px] text-[#6E6E73]">Choose an account for What's Next</p>
+                    <h3 className="font-semibold text-sm text-[#1D1D1F] dark:text-white">IIM Udaipur Account</h3>
+                    <p className="text-[11px] text-[#6E6E73] dark:text-[#8E8E93]">Choose an account for What's Next</p>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowAccountChooser(false)}
-                  className="w-7 h-7 rounded-full bg-surface text-secondary-text hover:text-primary-text flex items-center justify-center text-xs font-bold"
+                  className="w-7 h-7 rounded-full bg-surface dark:bg-white/10 text-secondary-text hover:text-primary-text flex items-center justify-center text-xs font-bold"
                 >
                   ✕
                 </button>
@@ -242,23 +242,23 @@ export function LoginScreen({ onLogin, onSimulateEmailLogin, domainError }: Logi
 
               {/* Quick Profile Selectors */}
               <div className="space-y-2">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Quick Sign In</p>
+                <p className="text-[10px] font-bold text-slate-400 dark:text-secondary-text uppercase tracking-wider">Quick Sign In</p>
                 <button
                   type="button"
                   onClick={() => {
                     setShowAccountChooser(false)
                     onSimulateEmailLogin?.('shahalabbas.dem2026@iimu.ac.in')
                   }}
-                  className="w-full text-left p-3 rounded-2xl bg-surface hover:bg-slate-100 transition-colors flex items-center gap-3 border border-border/50"
+                  className="w-full text-left p-3 rounded-2xl bg-surface dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors flex items-center gap-3 border border-border/50"
                 >
                   <div className="w-9 h-9 rounded-full bg-[#007AFF] text-white flex items-center justify-center font-bold text-xs">
                     S
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-bold text-slate-800 truncate">Shahal Abbas</p>
-                    <p className="text-[10px] font-mono text-slate-500 truncate">shahalabbas.dem2026@iimu.ac.in</p>
+                    <p className="text-xs font-bold text-slate-800 dark:text-white truncate">Shahal Abbas</p>
+                    <p className="text-[10px] font-mono text-slate-500 dark:text-[#8E8E93] truncate">shahalabbas.dem2026@iimu.ac.in</p>
                   </div>
-                  <span className="text-[10px] font-bold bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">Student</span>
+                  <span className="text-[10px] font-bold bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-300 px-2 py-0.5 rounded-full">Student</span>
                 </button>
 
                 <button
@@ -267,16 +267,16 @@ export function LoginScreen({ onLogin, onSimulateEmailLogin, domainError }: Logi
                     setShowAccountChooser(false)
                     onSimulateEmailLogin?.('admin@iimu.ac.in')
                   }}
-                  className="w-full text-left p-3 rounded-2xl bg-surface hover:bg-slate-100 transition-colors flex items-center gap-3 border border-border/50"
+                  className="w-full text-left p-3 rounded-2xl bg-surface dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors flex items-center gap-3 border border-border/50"
                 >
-                  <div className="w-9 h-9 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-xs">
+                  <div className="w-9 h-9 rounded-full bg-slate-900 dark:bg-white dark:text-black text-white flex items-center justify-center font-bold text-xs">
                     A
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-bold text-slate-800 truncate">Program Admin</p>
-                    <p className="text-[10px] font-mono text-slate-500 truncate">admin@iimu.ac.in</p>
+                    <p className="text-xs font-bold text-slate-800 dark:text-white truncate">Program Admin</p>
+                    <p className="text-[10px] font-mono text-slate-500 dark:text-[#8E8E93] truncate">admin@iimu.ac.in</p>
                   </div>
-                  <span className="text-[10px] font-bold bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full">Admin</span>
+                  <span className="text-[10px] font-bold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded-full">Admin</span>
                 </button>
               </div>
 

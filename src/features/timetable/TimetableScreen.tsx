@@ -31,7 +31,7 @@ export function TimetableScreen() {
   return (
     <div className="min-h-screen bg-surface pb-tab-bar">
       {/* Header */}
-      <div className="bg-white px-5 pt-safe-top pb-0 border-b border-border sticky top-0 z-20">
+      <div className="bg-white dark:bg-[#121214] px-5 pt-safe-top pb-0 border-b border-border sticky top-0 z-20">
         <div className="pt-3 pb-2">
           <h1 className="text-2xl font-bold text-primary-text tracking-tight">Schedule</h1>
         </div>
@@ -150,7 +150,7 @@ function SessionCard({
   return (
     <motion.div
       variants={fadeRise}
-      className={`bg-white rounded-2xl shadow-card overflow-hidden ${
+      className={`bg-white dark:bg-[#1C1C1E] border border-border dark:border-white/10 rounded-2xl shadow-card overflow-hidden ${
         isCurrentSession ? 'ring-2 ring-live' : ''
       } ${isCancelled ? 'opacity-60' : ''}`}
     >
@@ -242,14 +242,14 @@ function EventCard({ event }: { event: CampusEvent }) {
   return (
     <motion.div
       variants={fadeRise}
-      className="p-4 bg-blue-50/70 border border-blue-200/70 rounded-2xl space-y-2 shadow-2xs hover:border-blue-300 transition-all"
+      className="p-4 bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200/70 dark:border-blue-800/50 rounded-2xl space-y-2 shadow-2xs hover:border-blue-300 dark:hover:border-blue-700 transition-all"
     >
       <div className="flex items-start justify-between gap-2">
-        <h4 className="text-sm font-bold text-blue-950 flex items-center gap-1.5">
+        <h4 className="text-sm font-bold text-blue-950 dark:text-blue-200 flex items-center gap-1.5">
           <span>📌</span>
           <span>{event.title}</span>
         </h4>
-        <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-200/60 flex-shrink-0">
+        <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-200 border border-blue-200/60 dark:border-blue-700/60 flex-shrink-0">
           {formattedType}
         </span>
       </div>

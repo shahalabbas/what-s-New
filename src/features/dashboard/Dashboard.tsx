@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
+import { useTheme } from '../../hooks/useTheme'
 import { useSchedule } from '../../hooks/useSchedule'
 import { useMessMenu } from '../../hooks/useMessMenu'
 import { useProjects } from '../../hooks/useProjects'
@@ -42,6 +43,7 @@ export function Dashboard() {
   const mess = useMessMenu()
   const projects = useProjects()
   const { user, profile, signOut } = useAuth()
+  const { themePref, setTheme } = useTheme()
   useNow()
 
   // Pull-to-refresh state
@@ -123,7 +125,7 @@ export function Dashboard() {
 
   return (
     <div
-      className="min-h-screen bg-[#F8FAFC] pb-tab-bar select-none"
+      className="min-h-screen bg-surface dark:bg-black pb-tab-bar select-none transition-colors duration-200"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -150,10 +152,10 @@ export function Dashboard() {
       <header className="px-5 pt-safe-top pb-2 bg-transparent max-w-md mx-auto">
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-xs font-semibold text-slate-500 tracking-tight">
+            <p className="text-xs font-semibold text-slate-500 dark:text-[#8E8E93] tracking-tight">
               {dateFormatted} · Week {termWeek}
             </p>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight mt-0.5">
+            <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight mt-0.5">
               What's Next
             </h1>
           </div>
@@ -161,7 +163,7 @@ export function Dashboard() {
           <motion.button
             whileTap={{ scale: 0.92 }}
             onClick={() => setShowProfileSheet(true)}
-            className="w-10 h-10 rounded-full bg-white shadow-xs border border-slate-200/80 flex items-center justify-center text-sm font-black text-[#007AFF] mt-1"
+            className="w-10 h-10 rounded-full bg-white dark:bg-[#1C1C1E] shadow-xs border border-slate-200/80 dark:border-white/10 flex items-center justify-center text-sm font-black text-[#007AFF] dark:text-[#0A84FF] mt-1"
             title="Account & Profile"
           >
             {profile?.full_name ? profile.full_name.charAt(0).toUpperCase() : (user?.email?.charAt(0).toUpperCase() || 'S')}
@@ -607,8 +609,54 @@ export function Dashboard() {
             </div>
           </div>
 
+          {/* Appearance / Theme Mode Setting */}
+          <div className="bg-surface/70 dark:bg-white/5 rounded-2xl p-4 border border-border/80 space-y-2.5">
+            <div className="space-y-0.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-primary-text flex items-center gap-1.5">
+                  <span>🌓</span>
+                  <span>Appearance</span>
+                </span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider bg-accent/10 text-accent">
+                  {themePref === 'system' ? 'Auto (System)' : themePref === 'dark' ? 'Night Mode' : 'Light Mode'}
+                </span>
+              </div>
+              <p className="text-[11px] text-secondary-text">
+                {themePref === 'system'
+                  ? 'Automatically follows your phone’s system night/day mode in real time.'
+                  : themePref === 'dark'
+                  ? 'Always night mode (OLED true black & deep surfaces).'
+                  : 'Always light mode.'}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 pt-1">
+              {(
+                [
+                  { id: 'system', label: 'Auto', icon: '📱' },
+                  { id: 'light', label: 'Light', icon: '☀️' },
+                  { id: 'dark', label: 'Dark', icon: '🌙' },
+                ] as const
+              ).map((mode) => (
+                <button
+                  key={mode.id}
+                  type="button"
+                  onClick={() => setTheme(mode.id)}
+                  className={`py-2 px-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                    themePref === mode.id
+                      ? 'bg-accent text-white shadow-xs'
+                      : 'bg-white dark:bg-[#1C1C1E] text-secondary-text hover:text-primary-text border border-border dark:border-white/10'
+                  }`}
+                >
+                  <span>{mode.icon}</span>
+                  <span>{mode.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Placement Status / Dashboard Layout Setting */}
-          <div className="bg-surface/70 rounded-2xl p-4 border border-border/80 space-y-2.5">
+          <div className="bg-surface/70 dark:bg-white/5 rounded-2xl p-4 border border-border/80 space-y-2.5">
             <div className="space-y-0.5">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-primary-text flex items-center gap-1.5">
@@ -616,7 +664,7 @@ export function Dashboard() {
                   <span>Placement Status</span>
                 </span>
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
-                  isPlacedMode ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'
+                  isPlacedMode ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300'
                 }`}>
                   {isPlacedMode ? 'Placed 🎉' : 'Seeking Job'}
                 </span>
@@ -635,7 +683,7 @@ export function Dashboard() {
                 className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
                   !isPlacedMode
                     ? 'bg-accent text-white shadow-xs'
-                    : 'bg-white text-secondary-text hover:text-primary-text border border-border'
+                    : 'bg-white dark:bg-[#1C1C1E] text-secondary-text hover:text-primary-text border border-border dark:border-white/10'
                 }`}
               >
                 <span>💼 Seeking Job</span>
@@ -646,7 +694,7 @@ export function Dashboard() {
                 className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
                   isPlacedMode
                     ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'bg-white text-secondary-text hover:text-primary-text border border-border'
+                    : 'bg-white dark:bg-[#1C1C1E] text-secondary-text hover:text-primary-text border border-border dark:border-white/10'
                 }`}
               >
                 <span>🎓 I am Placed</span>
@@ -654,7 +702,7 @@ export function Dashboard() {
             </div>
           </div>
 
-          <div className="bg-surface/60 rounded-2xl p-4 space-y-2.5 text-xs text-secondary-text">
+          <div className="bg-surface/60 dark:bg-white/5 rounded-2xl p-4 space-y-2.5 text-xs text-secondary-text">
             <div className="flex justify-between">
               <span>Institute:</span>
               <strong className="text-primary-text">IIM Udaipur</strong>
@@ -692,7 +740,7 @@ export function Dashboard() {
               } catch {}
               window.location.reload()
             }}
-            className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl text-xs font-bold transition-colors flex items-center justify-center gap-2"
+            className="w-full py-3 bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/15 text-slate-700 dark:text-white rounded-2xl text-xs font-bold transition-colors flex items-center justify-center gap-2"
           >
             <span>🔄</span>
             <span>Force Update App & Clear Cache</span>
@@ -704,7 +752,7 @@ export function Dashboard() {
               setShowProfileSheet(false)
               await signOut()
             }}
-            className="w-full py-3.5 bg-red-50 hover:bg-red-100 text-danger rounded-2xl text-sm font-semibold transition-colors flex items-center justify-center gap-2"
+            className="w-full py-3.5 bg-red-50 hover:bg-red-100 dark:bg-rose-950/30 dark:hover:bg-rose-900/40 text-danger rounded-2xl text-sm font-semibold transition-colors flex items-center justify-center gap-2"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
               <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -1140,21 +1188,21 @@ function UpNextCard({
       <motion.div
         whileTap={{ scale: 0.97 }}
         onClick={onTap}
-        className="rounded-[24px] bg-white border border-slate-200/70 shadow-bento p-4 flex flex-col justify-between min-h-[172px] cursor-pointer hover:border-slate-300 transition-all select-none"
+        className="rounded-[24px] bg-white dark:bg-[#1C1C1E] border border-slate-200/70 dark:border-white/10 shadow-bento p-4 flex flex-col justify-between min-h-[172px] cursor-pointer hover:border-slate-300 dark:hover:border-white/20 transition-all select-none"
       >
         <div>
-          <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">
+          <span className="text-[10px] font-black text-slate-400 dark:text-secondary-text uppercase tracking-wider block">
             Up Next
           </span>
-          <div className="text-base font-extrabold text-slate-900 tracking-tight mt-2">
+          <div className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight mt-2">
             No Classes
           </div>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-xs text-slate-500 dark:text-secondary-text mt-1">
             Enjoy your free time!
           </p>
         </div>
         <div>
-          <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-600 font-bold text-[10px] px-2.5 py-1 rounded-full border border-slate-200/50">
+          <span className="inline-flex items-center gap-1 bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 font-bold text-[10px] px-2.5 py-1 rounded-full border border-slate-200/50 dark:border-white/10">
             All Done
           </span>
         </div>
@@ -1174,11 +1222,11 @@ function UpNextCard({
       className={`rounded-[24px] border shadow-bento p-4 flex flex-col justify-between min-h-[172px] cursor-pointer transition-all select-none ${
         item.isLive
           ? item.isEvent
-            ? 'bg-purple-50/60 border-purple-200 hover:border-purple-300'
-            : 'bg-emerald-50/50 border-emerald-200/90 hover:border-emerald-300'
+            ? 'bg-purple-50/60 dark:bg-purple-950/40 border-purple-200 dark:border-purple-800/60 hover:border-purple-300 dark:hover:border-purple-700'
+            : 'bg-emerald-50/50 dark:bg-emerald-950/40 border-emerald-200/90 dark:border-emerald-800/60 hover:border-emerald-300 dark:hover:border-emerald-700'
           : item.isEvent
-          ? 'bg-white border-indigo-100/90 hover:border-indigo-200'
-          : 'bg-white border-slate-200/70 hover:border-slate-300'
+          ? 'bg-white dark:bg-[#1C1C1E] border-indigo-100/90 dark:border-indigo-900/60 hover:border-indigo-200 dark:hover:border-indigo-700/60'
+          : 'bg-white dark:bg-[#1C1C1E] border-slate-200/70 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/20'
       }`}
     >
       <div>
@@ -1191,11 +1239,11 @@ function UpNextCard({
                 Live Now
               </span>
             ) : item.isEvent ? (
-              <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200/60">
+              <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/60">
                 {item.eventTypeBadge || 'Event'}
               </span>
             ) : (
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
+              <span className="text-[10px] font-black text-slate-400 dark:text-secondary-text uppercase tracking-wider">
                 Up Next
               </span>
             )}
@@ -1206,7 +1254,7 @@ function UpNextCard({
             <div className="flex items-center gap-1" title={`Session ${item.sessionNo} of ${item.totalSessions}`}>
               <svg className="w-5 h-5 -rotate-90 flex-shrink-0" viewBox="0 0 36 36">
                 <path
-                  className="text-slate-100"
+                  className="text-slate-100 dark:text-white/10"
                   strokeWidth="4"
                   stroke="currentColor"
                   fill="none"
@@ -1222,25 +1270,25 @@ function UpNextCard({
                   d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                 />
               </svg>
-              <span className="text-[9px] font-bold text-slate-500 font-mono">
+              <span className="text-[9px] font-bold text-slate-500 dark:text-secondary-text font-mono">
                 {item.sessionNo}/{item.totalSessions}
               </span>
             </div>
           ) : item.room ? (
-            <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+            <span className="text-[9px] font-bold text-slate-500 dark:text-secondary-text bg-slate-100 dark:bg-white/10 px-1.5 py-0.5 rounded border border-slate-200/50 dark:border-white/10">
               {item.room}
             </span>
           ) : null}
         </div>
 
         {/* Big Time Display */}
-        <div className="text-xl font-black text-slate-900 tracking-tight font-mono">
+        <div className="text-xl font-black text-slate-900 dark:text-white tracking-tight font-mono">
           {item.timeDisplay}
         </div>
 
         {/* Title */}
         <h3
-          className="text-xs font-bold text-slate-900 line-clamp-1 mt-1 leading-snug"
+          className="text-xs font-bold text-slate-900 dark:text-white line-clamp-1 mt-1 leading-snug"
           title={item.titleDisplay}
         >
           {item.titleDisplay}
@@ -1248,7 +1296,7 @@ function UpNextCard({
 
         {/* Faculty / Venue Subtitle */}
         {item.subtitle && (
-          <p className="text-[11px] font-medium text-slate-500 truncate mt-0.5">
+          <p className="text-[11px] font-medium text-slate-500 dark:text-secondary-text truncate mt-0.5">
             {item.subtitle}
           </p>
         )}
@@ -1260,11 +1308,11 @@ function UpNextCard({
           className={`inline-flex items-center gap-1 font-bold text-[10px] px-2.5 py-1 rounded-full truncate max-w-full border ${
             item.isLive
               ? item.isEvent
-                ? 'bg-purple-100 text-purple-800 border-purple-200'
-                : 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                ? 'bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-200 border-purple-200 dark:border-purple-700/60'
+                : 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-200 border-emerald-200 dark:border-emerald-700/60'
               : item.isEvent
-              ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
-              : 'bg-slate-100 text-slate-700 border-slate-200/60'
+              ? 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800/60'
+              : 'bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-300 border-slate-200/60 dark:border-white/10'
           }`}
         >
           {item.pillText}
@@ -1292,21 +1340,21 @@ function FoodCard({
       <motion.div
         whileTap={{ scale: 0.97 }}
         onClick={onTap}
-        className="rounded-[24px] bg-[#FFF9F2] border border-[#FDE8D0]/90 shadow-bento p-4 flex flex-col justify-between min-h-[172px] cursor-pointer hover:border-[#FDE8D0] transition-all select-none"
+        className="rounded-[24px] bg-[#FFF9F2] dark:bg-[#181410] border border-[#FDE8D0]/90 dark:border-[#382618] shadow-bento p-4 flex flex-col justify-between min-h-[172px] cursor-pointer hover:border-[#FDE8D0] dark:hover:border-[#4A3222] transition-all select-none"
       >
         <div>
-          <span className="text-[10px] font-black text-[#A05E26] uppercase tracking-wider block">
+          <span className="text-[10px] font-black text-[#A05E26] dark:text-[#D4A373] uppercase tracking-wider block">
             Mess Menu
           </span>
-          <div className="text-sm font-extrabold text-[#422206] leading-tight truncate mt-2">
+          <div className="text-sm font-extrabold text-[#422206] dark:text-[#F3D5B5] leading-tight truncate mt-2">
             No Menu Posted
           </div>
-          <p className="text-xs text-[#8C6239] mt-1">
+          <p className="text-xs text-[#8C6239] dark:text-[#C49B76] mt-1">
             Tap to view schedule
           </p>
         </div>
         <div>
-          <span className="bg-white rounded-full py-1 px-2.5 border border-[#FDE8D0] shadow-2xs text-[#422206] text-[10px] font-bold inline-block">
+          <span className="bg-white dark:bg-[#251C15] rounded-full py-1 px-2.5 border border-[#FDE8D0] dark:border-[#382618] shadow-2xs text-[#422206] dark:text-[#F3D5B5] text-[10px] font-bold inline-block">
             Timings
           </span>
         </div>
@@ -1333,11 +1381,11 @@ function FoodCard({
     <motion.div
       whileTap={{ scale: 0.97 }}
       onClick={onTap}
-      className="rounded-[24px] bg-[#FFF9F2] border border-[#FDE8D0]/90 shadow-bento p-4 flex flex-col justify-between min-h-[172px] cursor-pointer hover:border-[#FDE8D0] transition-all select-none"
+      className="rounded-[24px] bg-[#FFF9F2] dark:bg-[#181410] border border-[#FDE8D0]/90 dark:border-[#382618] shadow-bento p-4 flex flex-col justify-between min-h-[172px] cursor-pointer hover:border-[#FDE8D0] dark:hover:border-[#4A3222] transition-all select-none"
     >
       <div>
         <div className="flex items-center justify-between mb-1">
-          <span className="text-[10px] font-black text-[#A05E26] uppercase tracking-wider block">
+          <span className="text-[10px] font-black text-[#A05E26] dark:text-[#D4A373] uppercase tracking-wider block">
             {mealLabel} · {mealTime}
           </span>
           {displayMeal.isNowServing && (
@@ -1345,11 +1393,11 @@ function FoodCard({
           )}
         </div>
 
-        <div className="text-base font-extrabold text-[#422206] leading-tight truncate mt-1">
+        <div className="text-base font-extrabold text-[#422206] dark:text-[#F3D5B5] leading-tight truncate mt-1">
           {mainDish}
         </div>
         {otherItems && (
-          <p className="text-[11px] font-medium text-[#8C6239] line-clamp-2 mt-0.5 leading-snug">
+          <p className="text-[11px] font-medium text-[#8C6239] dark:text-[#C49B76] line-clamp-2 mt-0.5 leading-snug">
             + {otherItems}
           </p>
         )}
@@ -1357,19 +1405,19 @@ function FoodCard({
 
       <div className="mt-2.5">
         {nonVegOrEggItem ? (
-          <div className="bg-white rounded-full py-1 px-2.5 border border-red-200/80 shadow-2xs text-[#422206] text-[10px] font-bold flex items-center gap-1.5 w-full max-w-full overflow-hidden">
+          <div className="bg-white dark:bg-[#251C15] rounded-full py-1 px-2.5 border border-red-200/80 dark:border-red-900/60 shadow-2xs text-[#422206] dark:text-[#F3D5B5] text-[10px] font-bold flex items-center gap-1.5 w-full max-w-full overflow-hidden">
             <span className="w-3 h-3 rounded-[3px] border border-[#C2410C] flex items-center justify-center flex-shrink-0">
               <span className={`w-1.5 h-1.5 rounded-full ${nonVegOrEggItem.diet === 'non_veg' ? 'bg-[#C2410C]' : 'bg-[#D97706]'}`} />
             </span>
             <span className="truncate flex-1">{nonVegOrEggItem.name}</span>
           </div>
         ) : specialItem ? (
-          <div className="bg-white rounded-full py-1 px-2.5 border border-amber-200/80 shadow-2xs text-[#422206] text-[10px] font-bold flex items-center gap-1.5 w-full max-w-full overflow-hidden">
+          <div className="bg-white dark:bg-[#251C15] rounded-full py-1 px-2.5 border border-amber-200/80 dark:border-amber-900/60 shadow-2xs text-[#422206] dark:text-[#F3D5B5] text-[10px] font-bold flex items-center gap-1.5 w-full max-w-full overflow-hidden">
             <span className="flex-shrink-0 text-[10px]">⭐</span>
             <span className="truncate flex-1">{specialItem.name}</span>
           </div>
         ) : (
-          <div className="bg-white rounded-full py-1 px-2.5 border border-[#059669]/30 shadow-2xs text-[#059669] text-[10px] font-bold flex items-center gap-1.5 w-fit">
+          <div className="bg-white dark:bg-[#251C15] rounded-full py-1 px-2.5 border border-[#059669]/30 dark:border-[#059669]/50 shadow-2xs text-[#059669] dark:text-[#34D399] text-[10px] font-bold flex items-center gap-1.5 w-fit">
             <span className="w-3 h-3 rounded-[3px] border border-[#059669] flex items-center justify-center flex-shrink-0">
               <span className="w-1.5 h-1.5 rounded-full bg-[#059669]" />
             </span>
@@ -1408,25 +1456,25 @@ function DashboardProjectsSection({
     return (
       <div className="space-y-2.5 pt-1">
         <div className="flex items-center justify-between px-1">
-          <h2 className="text-base font-bold text-slate-900 tracking-tight">
+          <h2 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">
             Projects & Deadlines
           </h2>
           <button
             type="button"
             onClick={onViewAll}
-            className="text-xs font-semibold text-slate-500 hover:text-slate-900 transition-colors flex items-center gap-1"
+            className="text-xs font-semibold text-slate-500 dark:text-[#8E8E93] hover:text-slate-900 dark:hover:text-white transition-colors flex items-center gap-1"
           >
             <span>View all</span>
             <span>→</span>
           </button>
         </div>
 
-        <div className="py-7 text-center rounded-[22px] bg-white border border-slate-200/80 shadow-bento">
-          <div className="w-9 h-9 rounded-full bg-slate-50 flex items-center justify-center mx-auto text-slate-400 mb-2">
+        <div className="py-7 text-center rounded-[22px] bg-white dark:bg-[#1C1C1E] border border-slate-200/80 dark:border-white/10 shadow-bento">
+          <div className="w-9 h-9 rounded-full bg-slate-50 dark:bg-white/5 flex items-center justify-center mx-auto text-slate-400 dark:text-secondary-text mb-2">
             ✨
           </div>
-          <p className="text-xs font-bold text-slate-800">No Upcoming Deadlines</p>
-          <p className="text-[11px] text-slate-500 mt-0.5">You're completely caught up on assignments.</p>
+          <p className="text-xs font-bold text-slate-800 dark:text-white">No Upcoming Deadlines</p>
+          <p className="text-[11px] text-slate-500 dark:text-secondary-text mt-0.5">You're completely caught up on assignments.</p>
         </div>
       </div>
     )
@@ -1437,10 +1485,10 @@ function DashboardProjectsSection({
       {/* Clean Section Header (Minimal, no buttons, no desktop arrows) */}
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
-          <h2 className="text-base font-bold text-slate-900 tracking-tight">
+          <h2 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">
             Projects & Deadlines
           </h2>
-          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200/60">
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-white/10">
             {sortedProjects.length} upcoming
           </span>
         </div>
@@ -1448,7 +1496,7 @@ function DashboardProjectsSection({
         <button
           type="button"
           onClick={onViewAll}
-          className="text-xs font-semibold text-slate-500 hover:text-slate-900 transition-colors flex items-center gap-1"
+          className="text-xs font-semibold text-slate-500 dark:text-[#8E8E93] hover:text-slate-900 dark:hover:text-white transition-colors flex items-center gap-1"
         >
           <span>View all</span>
           <span>→</span>
@@ -1507,17 +1555,17 @@ function DashboardProjectsSection({
               data-testid="dashboard-project-card"
               whileTap={{ scale: 0.985 }}
               onClick={() => onSelectProject(item)}
-              className="min-h-[96px] max-h-[96px] h-[96px] snap-start rounded-[20px] bg-white border border-slate-200/70 shadow-xs hover:border-slate-300 p-3.5 cursor-pointer flex flex-col justify-between transition-all select-none"
+              className="min-h-[96px] max-h-[96px] h-[96px] snap-start rounded-[20px] bg-white dark:bg-[#1C1C1E] border border-slate-200/70 dark:border-white/10 shadow-xs hover:border-slate-300 dark:hover:border-white/20 p-3.5 cursor-pointer flex flex-col justify-between transition-all select-none"
             >
               {/* Row 1: Course code tag + Type name + Minimal Countdown */}
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0 flex-1">
                   {item.course ? (
-                    <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded-md bg-slate-100 text-slate-800 border border-slate-200/60 truncate max-w-[120px]">
+                    <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded-md bg-slate-100 dark:bg-white/10 text-slate-800 dark:text-slate-200 border border-slate-200/60 dark:border-white/10 truncate max-w-[120px]">
                       {item.course.code}
                     </span>
                   ) : null}
-                  <span className="text-[11px] font-medium text-slate-400 capitalize">
+                  <span className="text-[11px] font-medium text-slate-400 dark:text-secondary-text capitalize">
                     {item.type}
                   </span>
                 </div>
@@ -1528,37 +1576,37 @@ function DashboardProjectsSection({
                     <span>{formatDuration(secs)} left</span>
                   </div>
                 ) : (
-                  <span className="text-xs font-medium text-slate-500 flex-shrink-0">
+                  <span className="text-xs font-medium text-slate-500 dark:text-secondary-text flex-shrink-0">
                     {isPast ? 'Passed' : `${formatDuration(secs)} left`}
                   </span>
                 )}
               </div>
 
               {/* Row 2: Title */}
-              <h3 className="text-sm font-semibold text-slate-900 tracking-tight truncate leading-tight">
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-white tracking-tight truncate leading-tight">
                 {item.title}
               </h3>
 
               {/* Row 3: Minimal, High-Feeling Progress Bar + Date & Group */}
               <div>
-                <div className="w-full bg-slate-100 h-1 rounded-full overflow-hidden mb-1.5">
+                <div className="w-full bg-slate-100 dark:bg-white/10 h-1 rounded-full overflow-hidden mb-1.5">
                   <div
                     className={`h-full rounded-full transition-all duration-500 ${
                       isPast
-                        ? 'bg-slate-300'
+                        ? 'bg-slate-300 dark:bg-white/20'
                         : isCritical
                         ? 'bg-rose-500 animate-pulse'
-                        : 'bg-slate-800'
+                        : 'bg-slate-800 dark:bg-white/90'
                     }`}
                     style={{ width: `${submissionProgress}%` }}
                   />
                 </div>
 
                 <div className="flex items-center justify-between text-[11px] font-medium">
-                  <span className="truncate text-slate-500">
+                  <span className="truncate text-slate-500 dark:text-secondary-text">
                     Due {formatDeadline(item.deadline)}
                   </span>
-                  <span className="text-slate-400 flex-shrink-0">
+                  <span className="text-slate-400 dark:text-secondary-text flex-shrink-0">
                     {item.group_size > 1 ? `Group of ${item.group_size}` : 'Individual'}
                   </span>
                 </div>

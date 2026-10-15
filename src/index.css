@@ -8,6 +8,24 @@
     --safe-bottom: env(safe-area-inset-bottom);
     --safe-left: env(safe-area-inset-left);
     --safe-right: env(safe-area-inset-right);
+
+    /* Light Theme Tokens */
+    --color-surface: #F5F5F7;
+    --color-card: #FFFFFF;
+    --color-primary-text: #1D1D1F;
+    --color-secondary-text: #6E6E73;
+    --color-border: #E5E5EA;
+    --color-subtle-bg: #F8FAFC;
+  }
+
+  .dark {
+    /* Night Mode (Apple OLED True Black & Deep Slate) */
+    --color-surface: #000000;
+    --color-card: #1C1C1E;
+    --color-primary-text: #F5F5F7;
+    --color-secondary-text: #8E8E93;
+    --color-border: #2C2C2E;
+    --color-subtle-bg: #121214;
   }
 
   * {
@@ -21,7 +39,7 @@
   }
 
   body {
-    @apply bg-white text-primary-text font-sans antialiased;
+    @apply bg-white dark:bg-black text-primary-text font-sans antialiased;
     overflow-x: hidden;
     overscroll-behavior-y: none;
   }
@@ -57,11 +75,11 @@
   }
 
   .bento-card {
-    @apply bg-white rounded-[24px] border border-slate-100/90 shadow-bento transition-all duration-200;
+    @apply bg-white dark:bg-[#1C1C1E] rounded-[24px] border border-slate-100/90 dark:border-white/10 shadow-bento transition-all duration-200;
   }
 
   .glass-pill {
-    @apply backdrop-blur-md bg-white/80 border border-slate-200/60 shadow-2xs;
+    @apply backdrop-blur-md bg-white/80 dark:bg-white/10 border border-slate-200/60 dark:border-white/10 shadow-2xs;
   }
 }
 
@@ -78,7 +96,7 @@
 
 @layer components {
   .input {
-    @apply w-full bg-surface rounded-xl px-4 py-3 text-sm text-primary-text placeholder:text-secondary-text outline-none focus:ring-2 focus:ring-accent/30 border border-transparent focus:border-accent/30 transition-all;
+    @apply w-full bg-surface dark:bg-[#1C1C1E] rounded-xl px-4 py-3 text-sm text-primary-text placeholder:text-secondary-text outline-none focus:ring-2 focus:ring-accent/30 border border-transparent focus:border-accent/30 transition-all;
   }
 
   select.input {

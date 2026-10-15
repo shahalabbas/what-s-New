@@ -50,7 +50,7 @@ export function PlacementsScreen() {
   return (
     <div className="min-h-screen bg-surface pb-tab-bar select-none">
       {/* Header */}
-      <div className="bg-white px-5 pt-safe-top pb-3 border-b border-border sticky top-0 z-20">
+      <div className="bg-white dark:bg-[#121214] px-5 pt-safe-top pb-3 border-b border-border sticky top-0 z-20">
         <div className="pt-3 pb-2 flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-black text-primary-text tracking-tight">Placements</h1>
@@ -58,7 +58,7 @@ export function PlacementsScreen() {
           </div>
           <button
             onClick={() => refresh()}
-            className="w-8 h-8 rounded-full bg-surface flex items-center justify-center text-xs text-secondary-text hover:text-primary-text transition-colors"
+            className="w-8 h-8 rounded-full bg-surface dark:bg-white/10 flex items-center justify-center text-xs text-secondary-text hover:text-primary-text transition-colors"
             title="Refresh"
           >
             🔄
@@ -71,7 +71,7 @@ export function PlacementsScreen() {
             onClick={() => setActiveTab('open')}
             className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
               activeTab === 'open'
-                ? 'bg-white text-primary-text shadow-2xs'
+                ? 'bg-white dark:bg-[#2C2C2E] text-primary-text shadow-2xs'
                 : 'text-secondary-text hover:text-primary-text'
             }`}
           >
@@ -87,7 +87,7 @@ export function PlacementsScreen() {
             onClick={() => setActiveTab('applied')}
             className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
               activeTab === 'applied'
-                ? 'bg-white text-primary-text shadow-2xs'
+                ? 'bg-white dark:bg-[#2C2C2E] text-primary-text shadow-2xs'
                 : 'text-secondary-text hover:text-primary-text'
             }`}
           >
@@ -103,13 +103,13 @@ export function PlacementsScreen() {
             onClick={() => setActiveTab('closed')}
             className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
               activeTab === 'closed'
-                ? 'bg-white text-primary-text shadow-2xs'
+                ? 'bg-white dark:bg-[#2C2C2E] text-primary-text shadow-2xs'
                 : 'text-secondary-text hover:text-primary-text'
             }`}
           >
             <span>🔒 Closed</span>
             {closedOpportunities.length > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-slate-200 text-slate-700">
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-slate-300">
                 {closedOpportunities.length}
               </span>
             )}
@@ -200,22 +200,22 @@ function PlacementCard({
 
   const urgencyStyles = {
     normal: {
-      cardBg: 'bg-white border-slate-100 hover:border-slate-200',
-      badgeBg: 'bg-slate-800 text-white',
+      cardBg: 'bg-white dark:bg-[#1C1C1E] border-slate-100 dark:border-white/10 hover:border-slate-200 dark:hover:border-white/20',
+      badgeBg: 'bg-slate-800 dark:bg-white dark:text-black text-white',
       icon: '⏱️',
     },
     warm: {
-      cardBg: 'bg-gradient-to-br from-white to-amber-50/50 border-amber-200/80 hover:border-amber-300',
+      cardBg: 'bg-gradient-to-br from-white dark:from-[#1C1C1E] to-amber-50/50 dark:to-amber-950/20 border-amber-200/80 dark:border-amber-800/50 hover:border-amber-300',
       badgeBg: 'bg-amber-500 text-white shadow-xs shadow-amber-500/20',
       icon: '⏳',
     },
     urgent: {
-      cardBg: 'bg-gradient-to-br from-white to-rose-50/60 border-rose-200/90 hover:border-rose-300',
+      cardBg: 'bg-gradient-to-br from-white dark:from-[#1C1C1E] to-rose-50/60 dark:to-rose-950/20 border-rose-200/90 dark:border-rose-800/50 hover:border-rose-300',
       badgeBg: 'bg-rose-500 text-white shadow-xs shadow-rose-500/30 animate-pulse',
       icon: '🔥',
     },
     closed: {
-      cardBg: 'bg-slate-50/60 border-slate-200 opacity-80',
+      cardBg: 'bg-slate-50/60 dark:bg-white/5 border-slate-200 dark:border-white/10 opacity-80',
       badgeBg: 'bg-slate-400 text-white',
       icon: '🔒',
     },
@@ -238,7 +238,7 @@ function PlacementCard({
             {opp.additional_details?.map((d, i) => (
               <span
                 key={i}
-                className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-200/60 truncate max-w-[150px]"
+                className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-white/10 truncate max-w-[150px]"
               >
                 {d.label}: {d.value}
               </span>

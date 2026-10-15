@@ -36,7 +36,7 @@ export function MessScreen() {
   return (
     <div className="min-h-screen bg-surface pb-tab-bar">
       {/* Header */}
-      <div className="bg-white px-5 pt-safe-top pb-0 border-b border-border sticky top-0 z-20">
+      <div className="bg-white dark:bg-[#121214] px-5 pt-safe-top pb-0 border-b border-border sticky top-0 z-20">
         <div className="pt-3 pb-2 flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-primary-text tracking-tight">Mess Menu</h1>
@@ -117,8 +117,8 @@ function MealCard({ menu, isActive }: { menu: MessMenuDay; isActive: boolean }) 
   return (
     <motion.div
       variants={fadeRise}
-      className={`bg-white rounded-2xl shadow-card overflow-hidden border transition-all ${
-        isActive ? 'ring-2 ring-live border-live/30' : 'border-border'
+      className={`bg-white dark:bg-[#1C1C1E] rounded-2xl shadow-card overflow-hidden border transition-all ${
+        isActive ? 'ring-2 ring-live border-live/30' : 'border-border dark:border-white/10'
       }`}
     >
       <div className="p-4 space-y-3">
@@ -130,12 +130,12 @@ function MealCard({ menu, isActive }: { menu: MessMenuDay; isActive: boolean }) 
               <div className="flex items-center gap-2">
                 <h3 className="text-base font-bold text-primary-text">{mealName}</h3>
                 {menu.has_special && (
-                  <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/60 px-2 py-0.5 rounded-full flex items-center gap-1">
                     <span>⭐</span> Special
                   </span>
                 )}
                 {menu.has_non_veg && (
-                  <span className="text-[10px] font-bold text-rose-700 bg-rose-100 px-2 py-0.5 rounded-full">
+                  <span className="text-[10px] font-bold text-rose-700 dark:text-rose-300 bg-rose-100 dark:bg-rose-950/60 px-2 py-0.5 rounded-full">
                     🍗 Non-Veg / Egg
                   </span>
                 )}

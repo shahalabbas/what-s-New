@@ -160,7 +160,7 @@ export function ProjectsScreen() {
   return (
     <div className="min-h-screen bg-surface pb-tab-bar">
       {/* Header */}
-      <div className="bg-white px-5 pt-safe-top pb-3 border-b border-border sticky top-0 z-20">
+      <div className="bg-white dark:bg-[#121214] px-5 pt-safe-top pb-3 border-b border-border sticky top-0 z-20">
         <div className="pt-3 pb-2 flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-primary-text tracking-tight">Academics</h1>
@@ -184,7 +184,7 @@ export function ProjectsScreen() {
           <button
             onClick={() => setMainTab('deadlines')}
             className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${
-              mainTab === 'deadlines' ? 'bg-white text-primary-text shadow-sm' : 'text-secondary-text'
+              mainTab === 'deadlines' ? 'bg-white dark:bg-[#2C2C2E] text-primary-text shadow-sm' : 'text-secondary-text'
             }`}
           >
             Deadlines ({projects.length})
@@ -192,7 +192,7 @@ export function ProjectsScreen() {
           <button
             onClick={() => setMainTab('progress')}
             className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${
-              mainTab === 'progress' ? 'bg-white text-primary-text shadow-sm' : 'text-secondary-text'
+              mainTab === 'progress' ? 'bg-white dark:bg-[#2C2C2E] text-primary-text shadow-sm' : 'text-secondary-text'
             }`}
           >
             Course Progress ({progressList.length})
@@ -350,7 +350,7 @@ function CourseProgressCard({ progress }: { progress: CourseProgress }) {
   return (
     <motion.div
       variants={fadeRise}
-      className="w-full bg-white rounded-2xl shadow-card overflow-hidden p-4 text-left"
+      className="w-full bg-white dark:bg-[#1C1C1E] border border-border dark:border-white/10 rounded-2xl shadow-card overflow-hidden p-4 text-left"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
@@ -419,7 +419,7 @@ function ProjectCard({ project, onClick }: { project: Project; onClick: () => vo
       onClick={onClick}
       whileTap={{ scale: 0.97 }}
       transition={spring}
-      className="w-full bg-white rounded-2xl shadow-card overflow-hidden text-left"
+      className="w-full bg-white dark:bg-[#1C1C1E] border border-border dark:border-white/10 rounded-2xl shadow-card overflow-hidden text-left"
     >
       <div className="flex">
         <div

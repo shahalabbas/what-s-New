@@ -39,7 +39,7 @@ export function BottomSheet({ isOpen, onClose, children, title, fullHeight = fal
             initial="hidden"
             animate="visible"
             exit="exit"
-            className={`fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl safe-bottom ${
+            className={`fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-[#1C1C1E] border-t border-transparent dark:border-white/10 rounded-t-3xl safe-bottom ${
               fullHeight ? 'max-h-[90vh]' : 'max-h-[80vh]'
             } flex flex-col`}
             drag="y"
@@ -51,10 +51,10 @@ export function BottomSheet({ isOpen, onClose, children, title, fullHeight = fal
           >
             {/* Drag handle */}
             <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
-              <div className="w-10 h-1 bg-border rounded-full" />
+              <div className="w-10 h-1 bg-border dark:bg-white/20 rounded-full" />
             </div>
             {title && (
-              <div className="px-5 py-3 border-b border-border flex-shrink-0">
+              <div className="px-5 py-3 border-b border-border dark:border-white/10 flex-shrink-0">
                 <h2 className="text-lg font-semibold text-primary-text">{title}</h2>
               </div>
             )}
