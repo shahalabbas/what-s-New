@@ -93,7 +93,7 @@ export function PlacementsScreen() {
           >
             <span>✓ Applied</span>
             {appliedOpportunities.length > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-700">
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">
                 {appliedOpportunities.length}
               </span>
             )}
@@ -137,7 +137,7 @@ export function PlacementsScreen() {
         {loading ? (
           <ListSkeleton count={4} />
         ) : displayList.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-3xl border border-border p-6 space-y-2 shadow-2xs">
+          <div className="text-center py-12 bg-white dark:bg-[#1C1C1E] rounded-3xl border border-border p-6 space-y-2 shadow-2xs">
             <span className="text-3xl">💼</span>
             <h3 className="text-sm font-bold text-primary-text">No Opportunities Found</h3>
             <p className="text-xs text-secondary-text max-w-xs mx-auto">
@@ -263,7 +263,7 @@ function PlacementCard({
       </div>
 
       {/* Footer: Deadline info & quick status action */}
-      <div className="flex items-center justify-between gap-2 text-xs pt-2.5 mt-2 border-t border-slate-100">
+      <div className="flex items-center justify-between gap-2 text-xs pt-2.5 mt-2 border-t border-slate-100 dark:border-white/10">
         <div className="flex items-center gap-1.5 text-secondary-text truncate text-[11px] font-medium">
           <span>📅</span>
           <span className="truncate">
@@ -275,14 +275,14 @@ function PlacementCard({
 
         <div className="flex items-center gap-1.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
           {currentStatus === 'applied' ? (
-            <span className="px-3 py-1 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/80 flex items-center gap-1">
+            <span className="px-3 py-1 rounded-xl text-xs font-bold bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60 flex items-center gap-1">
               <span>✓</span>
               <span>Applied</span>
             </span>
           ) : (
             <button
               onClick={() => onStatusChange('applied')}
-              className="px-3 py-1 rounded-xl text-xs font-bold bg-white hover:bg-slate-100 text-slate-800 border border-slate-200 shadow-2xs transition-all flex items-center gap-1"
+              className="px-3 py-1 rounded-xl text-xs font-bold bg-white dark:bg-[#2C2C2E] hover:bg-slate-100 dark:hover:bg-[#3A3A3C] text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-white/10 shadow-2xs transition-all flex items-center gap-1"
             >
               <span>✓</span>
               <span>Mark Applied</span>

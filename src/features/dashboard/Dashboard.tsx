@@ -34,9 +34,9 @@ const MEAL_ICONS: Record<MealType, string> = {
 }
 
 const TYPE_COLORS: Record<ProjectType, { bg: string; text: string; label: string }> = {
-  assignment: { bg: 'bg-blue-50 text-blue-700 border-blue-200/60', text: '#0A84FF', label: 'Assignment' },
-  project: { bg: 'bg-emerald-50 text-emerald-700 border-emerald-200/60', text: '#34C759', label: 'Project' },
-  'end-term': { bg: 'bg-rose-50 text-rose-700 border-rose-200/60', text: '#FF3B30', label: 'End-term' },
+  assignment: { bg: 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border-blue-200/60 dark:border-blue-800/60', text: '#0A84FF', label: 'Assignment' },
+  project: { bg: 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200/60 dark:border-emerald-800/60', text: '#34C759', label: 'Project' },
+  'end-term': { bg: 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border-rose-200/60 dark:border-rose-800/60', text: '#FF3B30', label: 'End-term' },
 }
 
 export function Dashboard() {
@@ -346,19 +346,19 @@ export function Dashboard() {
                           </span>
                         )}
                         {s.status === 'cancelled' && (
-                          <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-red-100 text-red-700">
+                          <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 dark:border dark:border-rose-800/50">
                             Cancelled
                           </span>
                         )}
                         {s.status === 'rescheduled' && (
-                          <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                          <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 dark:border dark:border-amber-800/50">
                             Rescheduled
                           </span>
                         )}
                       </div>
 
                       {s.session_no && (
-                        <span className="text-[10px] font-bold bg-surface text-secondary-text px-2 py-0.5 rounded-full border border-border shadow-2xs">
+                        <span className="text-[10px] font-bold bg-surface dark:bg-white/5 text-secondary-text px-2 py-0.5 rounded-full border border-border dark:border-white/10 shadow-2xs">
                           Session {s.session_no} of {s.course?.total_sessions || 20}
                         </span>
                       )}
@@ -380,7 +380,7 @@ export function Dashboard() {
                           📍 {s.room || 'CR-7C-15'}
                         </p>
                         {s.note && (
-                          <p className="text-[11px] font-medium text-amber-700 mt-1 bg-amber-100/50 px-2 py-0.5 rounded-lg inline-block">
+                          <p className="text-[11px] font-medium text-amber-700 dark:text-amber-300 mt-1 bg-amber-100/50 dark:bg-amber-950/40 border border-transparent dark:border-amber-800/40 px-2 py-0.5 rounded-lg inline-block">
                             📝 {s.note}
                           </p>
                         )}
@@ -511,8 +511,8 @@ export function Dashboard() {
                     key={dayMenu.meal}
                     className={`p-4 rounded-2xl transition-all ${
                       isCurrentServing
-                        ? 'bg-amber-50 border border-amber-300 shadow-sm'
-                        : 'bg-white border border-border'
+                        ? 'bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-700/60 shadow-sm'
+                        : 'bg-white dark:bg-[#1C1C1E] border border-border dark:border-white/10'
                     }`}
                   >
                     <div className="flex items-center justify-between mb-2">
@@ -527,12 +527,12 @@ export function Dashboard() {
                           </span>
                         )}
                         {dayMenu.has_non_veg && (
-                          <span className="text-[10px] font-bold uppercase bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
-                            Non-Veg / Egg
+                          <span className="text-[10px] font-bold uppercase bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 dark:border dark:border-rose-800/50 px-2 py-0.5 rounded-full">
+                            🍗 Non-Veg / Egg
                           </span>
                         )}
                         {dayMenu.has_special && (
-                          <span className="text-[10px] font-bold uppercase bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">
+                          <span className="text-[10px] font-bold uppercase bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 dark:border dark:border-amber-800/50 px-2 py-0.5 rounded-full">
                             ⭐ Special
                           </span>
                         )}
@@ -543,28 +543,40 @@ export function Dashboard() {
                     </div>
 
                     <div className="flex flex-wrap gap-1.5">
-                      {dayMenu.items.map((item, idx) => (
-                        <div
-                          key={idx}
-                          className={`text-xs bg-surface px-2.5 py-1 rounded-full text-primary-text shadow-2xs border font-medium flex items-center gap-1.5 ${
-                            item.diet === 'non_veg'
-                              ? 'border-red-200 text-red-950 bg-red-50/30'
-                              : item.diet === 'egg'
-                              ? 'border-amber-200 text-amber-950 bg-amber-50/30'
-                              : 'border-border/60'
-                          }`}
-                        >
-                          {item.diet === 'non_veg' && <span className="text-[10px]">🔴</span>}
-                          {item.diet === 'egg' && <span className="text-[10px]">🟡</span>}
-                          {item.is_special && <span className="text-amber-500">⭐</span>}
-                          <span>{item.name}</span>
-                          {item.note && (
-                            <span className="text-[10px] text-secondary-text italic">
-                              ({item.note})
-                            </span>
-                          )}
-                        </div>
-                      ))}
+                      {dayMenu.items.map((item, idx) => {
+                        const isNonVeg = item.diet === 'non_veg'
+                        const isEgg = item.diet === 'egg'
+                        const isSpecial = item.is_special
+
+                        let itemClasses = 'border-border/70 dark:border-white/10 bg-surface dark:bg-white/5 text-primary-text'
+                        let dotColor = 'bg-emerald-600 dark:bg-emerald-400'
+
+                        if (isNonVeg) {
+                          itemClasses = 'border-rose-200/80 dark:border-rose-800/60 bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-200'
+                          dotColor = 'bg-rose-600 dark:bg-rose-400'
+                        } else if (isEgg) {
+                          itemClasses = 'border-amber-200/80 dark:border-amber-800/60 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200'
+                          dotColor = 'bg-amber-600 dark:bg-amber-400'
+                        } else if (isSpecial) {
+                          itemClasses = 'border-amber-300/80 dark:border-amber-700/60 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200'
+                        }
+
+                        return (
+                          <div
+                            key={idx}
+                            className={`text-xs px-2.5 py-1 rounded-full shadow-2xs border font-medium flex items-center gap-1.5 transition-colors ${itemClasses}`}
+                          >
+                            <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${dotColor}`} />
+                            <span>{item.name}</span>
+                            {item.is_special && <span className="text-amber-500 text-[10px]">⭐</span>}
+                            {item.note && (
+                              <span className="text-[10px] text-secondary-text dark:text-zinc-400 italic">
+                                ({item.note})
+                              </span>
+                            )}
+                          </div>
+                        )
+                      })}
                     </div>
                   </div>
                 )
@@ -609,7 +621,7 @@ export function Dashboard() {
                 <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider bg-accent/10 text-accent">
                   {profile?.role ?? 'student'}
                 </span>
-                <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider bg-amber-500/10 text-amber-700">
+                <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-transparent dark:border-amber-500/20">
                   {profile?.program?.toUpperCase() || 'DEM'} {profile?.batch_year || 2026}
                 </span>
               </div>
@@ -887,7 +899,7 @@ export function Dashboard() {
             <div className="flex items-center gap-2 flex-wrap">
               <span
                 className={`text-xs font-bold px-2.5 py-1 rounded-full border ${
-                  TYPE_COLORS[selectedProject.type]?.bg || 'bg-slate-100 text-slate-700'
+                  TYPE_COLORS[selectedProject.type]?.bg || 'bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-300'
                 }`}
               >
                 {TYPE_COLORS[selectedProject.type]?.label || selectedProject.type}
@@ -908,7 +920,7 @@ export function Dashboard() {
                   const isPast = secs <= 0
                   const isCritical = secs > 0 && secs < 3600 * 12
                   return (
-                    <span className={`text-xs font-bold ${isPast ? 'text-secondary-text' : isCritical ? 'text-rose-600 animate-pulse' : secs < 86400 * 2 ? 'text-amber-700' : 'text-soon'}`}>
+                    <span className={`text-xs font-bold ${isPast ? 'text-secondary-text' : isCritical ? 'text-rose-600 dark:text-rose-400 animate-pulse' : secs < 86400 * 2 ? 'text-amber-700 dark:text-amber-400' : 'text-soon'}`}>
                       {isPast ? 'Deadline passed' : `${formatDuration(secs)} remaining`}
                     </span>
                   )
@@ -1496,7 +1508,7 @@ function FoodCard({
     >
       <div>
         <div className="flex items-center justify-between mb-1">
-          <span className="text-[10px] font-black text-[#A05E26] dark:text-[#D4A373] uppercase tracking-wider block">
+          <span className="text-[10px] font-black text-[#A05E26] dark:text-[#E0A96D] uppercase tracking-wider block">
             {mealLabel} · {mealTime}
           </span>
           {displayMeal.isNowServing && (
@@ -1504,11 +1516,11 @@ function FoodCard({
           )}
         </div>
 
-        <div className="text-base font-extrabold text-[#422206] dark:text-[#F3D5B5] leading-tight truncate mt-1">
+        <div className="text-base font-extrabold text-[#422206] dark:text-[#FDF2E9] leading-tight truncate mt-1">
           {mainDish}
         </div>
         {otherItems && (
-          <p className="text-[11px] font-medium text-[#8C6239] dark:text-[#C49B76] line-clamp-2 mt-0.5 leading-snug">
+          <p className="text-[11px] font-medium text-[#8C6239] dark:text-[#D1A077] line-clamp-2 mt-0.5 leading-snug">
             + {otherItems}
           </p>
         )}
@@ -1516,21 +1528,39 @@ function FoodCard({
 
       <div className="mt-2.5">
         {nonVegOrEggItem ? (
-          <div className="bg-white dark:bg-[#251C15] rounded-full py-1 px-2.5 border border-red-200/80 dark:border-red-900/60 shadow-2xs text-[#422206] dark:text-[#F3D5B5] text-[10px] font-bold flex items-center gap-1.5 w-full max-w-full overflow-hidden">
-            <span className="w-3 h-3 rounded-[3px] border border-[#C2410C] flex items-center justify-center flex-shrink-0">
-              <span className={`w-1.5 h-1.5 rounded-full ${nonVegOrEggItem.diet === 'non_veg' ? 'bg-[#C2410C]' : 'bg-[#D97706]'}`} />
+          <div
+            className={`rounded-full py-1 px-2.5 border shadow-2xs text-[10px] font-bold flex items-center gap-1.5 w-full max-w-full overflow-hidden ${
+              nonVegOrEggItem.diet === 'non_veg'
+                ? 'bg-white dark:bg-rose-950/40 border-rose-200/80 dark:border-rose-800/60 text-rose-900 dark:text-rose-200'
+                : 'bg-white dark:bg-amber-950/40 border-amber-200/80 dark:border-amber-800/60 text-amber-900 dark:text-amber-200'
+            }`}
+          >
+            <span
+              className={`w-3 h-3 rounded-[3px] border flex items-center justify-center flex-shrink-0 ${
+                nonVegOrEggItem.diet === 'non_veg'
+                  ? 'border-rose-600 dark:border-rose-400'
+                  : 'border-amber-600 dark:border-amber-400'
+              }`}
+            >
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${
+                  nonVegOrEggItem.diet === 'non_veg'
+                    ? 'bg-rose-600 dark:bg-rose-400'
+                    : 'bg-amber-600 dark:bg-amber-400'
+                }`}
+              />
             </span>
             <span className="truncate flex-1">{nonVegOrEggItem.name}</span>
           </div>
         ) : specialItem ? (
-          <div className="bg-white dark:bg-[#251C15] rounded-full py-1 px-2.5 border border-amber-200/80 dark:border-amber-900/60 shadow-2xs text-[#422206] dark:text-[#F3D5B5] text-[10px] font-bold flex items-center gap-1.5 w-full max-w-full overflow-hidden">
+          <div className="bg-white dark:bg-amber-950/40 rounded-full py-1 px-2.5 border border-amber-200/80 dark:border-amber-700/60 shadow-2xs text-amber-900 dark:text-amber-200 text-[10px] font-bold flex items-center gap-1.5 w-full max-w-full overflow-hidden">
             <span className="flex-shrink-0 text-[10px]">⭐</span>
             <span className="truncate flex-1">{specialItem.name}</span>
           </div>
         ) : (
-          <div className="bg-white dark:bg-[#251C15] rounded-full py-1 px-2.5 border border-[#059669]/30 dark:border-[#059669]/50 shadow-2xs text-[#059669] dark:text-[#34D399] text-[10px] font-bold flex items-center gap-1.5 w-fit">
-            <span className="w-3 h-3 rounded-[3px] border border-[#059669] flex items-center justify-center flex-shrink-0">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#059669]" />
+          <div className="bg-white dark:bg-emerald-950/40 rounded-full py-1 px-2.5 border border-emerald-200/80 dark:border-emerald-800/50 shadow-2xs text-emerald-700 dark:text-emerald-300 text-[10px] font-bold flex items-center gap-1.5 w-fit">
+            <span className="w-3 h-3 rounded-[3px] border border-emerald-600 dark:border-emerald-400 flex items-center justify-center flex-shrink-0">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 dark:bg-emerald-400" />
             </span>
             <span>Pure Veg</span>
           </div>
@@ -1682,7 +1712,7 @@ function DashboardProjectsSection({
                 </div>
 
                 {isCritical ? (
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-rose-600 flex-shrink-0">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-rose-600 dark:text-rose-400 flex-shrink-0">
                     <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
                     <span>{formatDuration(secs)} left</span>
                   </div>

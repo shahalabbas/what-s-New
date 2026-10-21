@@ -1056,9 +1056,9 @@ function MessIngestAdmin() {
                           </td>
                           <td className="px-3 py-2">
                             <span className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase ${
-                              item.diet === 'non_veg' ? 'bg-rose-100 text-rose-800' :
-                              item.diet === 'egg' ? 'bg-amber-100 text-amber-800' :
-                              'bg-emerald-100 text-emerald-800'
+                              item.diet === 'non_veg' ? 'bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300' :
+                              item.diet === 'egg' ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300' :
+                              'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300'
                             }`}>
                               {item.diet}
                             </span>

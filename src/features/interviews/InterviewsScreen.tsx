@@ -299,16 +299,16 @@ function OpeningCard({
   const appStatus = opportunity.student_application?.status
 
   const statusBadges: Record<StudentApplicationStatus, { label: string; bg: string }> = {
-    interested: { label: '⭐ Interested', bg: 'bg-amber-100 text-amber-800' },
-    applied: { label: '✓ Applied', bg: 'bg-emerald-100 text-emerald-800' },
-    skipped: { label: '✕ Skipped', bg: 'bg-slate-100 text-slate-600' },
+    interested: { label: '⭐ Interested', bg: 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 dark:border dark:border-amber-800/50' },
+    applied: { label: '✓ Applied', bg: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border dark:border-emerald-800/50' },
+    skipped: { label: '✕ Skipped', bg: 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300 dark:border dark:border-white/10' },
   }
 
   const urgencyPillStyles = {
-    normal: 'bg-slate-100 text-slate-700 border-slate-200/60',
-    warm: 'bg-amber-50 text-amber-700 border-amber-200/70 font-black',
-    urgent: 'bg-rose-50 text-rose-700 border-rose-200/70 font-black animate-pulse',
-    closed: 'bg-slate-100 text-slate-500 border-slate-200/40',
+    normal: 'bg-slate-100 text-slate-700 border-slate-200/60 dark:bg-white/10 dark:text-slate-300 dark:border-white/10',
+    warm: 'bg-amber-50 text-amber-700 border-amber-200/70 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/60 font-black',
+    urgent: 'bg-rose-50 text-rose-700 border-rose-200/70 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800/60 font-black animate-pulse',
+    closed: 'bg-slate-100 text-slate-500 border-slate-200/40 dark:bg-white/5 dark:text-slate-400 dark:border-white/10',
   }[countdown.urgency]
 
   return (
@@ -317,8 +317,8 @@ function OpeningCard({
       onClick={onClick}
       whileTap={{ scale: 0.98 }}
       transition={spring}
-      className={`w-full bg-white rounded-2xl border border-border shadow-2xs p-4 text-left transition-all hover:border-slate-300 ${
-        isDimmed ? 'bg-slate-50/70' : ''
+      className={`w-full bg-white dark:bg-[#1C1C1E] rounded-2xl border border-border dark:border-white/10 shadow-2xs p-4 text-left transition-all hover:border-slate-300 dark:hover:border-white/20 ${
+        isDimmed ? 'opacity-60 bg-slate-50/70 dark:bg-white/5' : ''
       }`}
     >
       <div className="flex items-start justify-between gap-2">
@@ -328,7 +328,7 @@ function OpeningCard({
               {opportunity.company}
             </h3>
             {opportunity.additional_details?.map((d, i) => (
-              <span key={i} className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 border border-slate-200">
+              <span key={i} className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-white/10">
                 {d.label}: {d.value}
               </span>
             ))}

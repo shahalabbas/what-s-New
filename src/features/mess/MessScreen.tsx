@@ -130,12 +130,12 @@ function MealCard({ menu, isActive }: { menu: MessMenuDay; isActive: boolean }) 
               <div className="flex items-center gap-2">
                 <h3 className="text-base font-bold text-primary-text">{mealName}</h3>
                 {menu.has_special && (
-                  <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/60 px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/60 border border-transparent dark:border-amber-800/50 px-2 py-0.5 rounded-full flex items-center gap-1">
                     <span>⭐</span> Special
                   </span>
                 )}
                 {menu.has_non_veg && (
-                  <span className="text-[10px] font-bold text-rose-700 dark:text-rose-300 bg-rose-100 dark:bg-rose-950/60 px-2 py-0.5 rounded-full">
+                  <span className="text-[10px] font-bold text-rose-700 dark:text-rose-300 bg-rose-100 dark:bg-rose-950/60 border border-transparent dark:border-rose-800/50 px-2 py-0.5 rounded-full">
                     🍗 Non-Veg / Egg
                   </span>
                 )}
@@ -168,17 +168,17 @@ function FoodPill({ item }: { item: MessMenuItemFormatted }) {
   const isEgg = item.diet === 'egg'
   const isSpecial = item.is_special
 
-  let badgeColor = 'bg-surface text-primary-text border-border'
-  let dotColor = 'bg-emerald-600'
+  let badgeColor = 'bg-surface dark:bg-white/5 text-primary-text border-border dark:border-white/10'
+  let dotColor = 'bg-emerald-600 dark:bg-emerald-400'
 
   if (isNonVeg) {
-    badgeColor = 'bg-rose-50/80 text-rose-900 border-rose-200/80 font-medium'
-    dotColor = 'bg-rose-600'
+    badgeColor = 'bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-200 border-rose-200/80 dark:border-rose-800/60 font-medium'
+    dotColor = 'bg-rose-600 dark:bg-rose-400'
   } else if (isEgg) {
-    badgeColor = 'bg-amber-50/80 text-amber-900 border-amber-200/80 font-medium'
-    dotColor = 'bg-amber-600'
+    badgeColor = 'bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200 border-amber-200/80 dark:border-amber-800/60 font-medium'
+    dotColor = 'bg-amber-600 dark:bg-amber-400'
   } else if (isSpecial) {
-    badgeColor = 'bg-amber-50 text-amber-900 border-amber-300 font-semibold'
+    badgeColor = 'bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700/60 font-semibold'
   }
 
   return (
@@ -190,7 +190,7 @@ function FoodPill({ item }: { item: MessMenuItemFormatted }) {
       <span>{item.name}</span>
       {item.is_special && <span className="text-[10px]">⭐</span>}
       {item.note && (
-        <span className="text-[10px] text-secondary-text font-normal">({item.note})</span>
+        <span className="text-[10px] text-secondary-text dark:text-zinc-400 font-normal">({item.note})</span>
       )}
     </span>
   )

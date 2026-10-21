@@ -309,9 +309,9 @@ export function ProjectsScreen() {
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white rounded-3xl p-5 max-w-sm w-full shadow-modal space-y-3"
+              className="bg-white dark:bg-[#1C1C1E] border border-transparent dark:border-white/10 rounded-3xl p-5 max-w-sm w-full shadow-modal space-y-3"
             >
-              <div className="w-10 h-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-xl font-bold">
+              <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-950/50 text-red-600 dark:text-red-400 flex items-center justify-center text-xl font-bold">
                 ⚠️
               </div>
               <h3 className="text-base font-bold text-primary-text">Delete Project?</h3>
@@ -559,7 +559,7 @@ function ProjectDetail({
             <button
               type="button"
               onClick={onDelete}
-              className="px-2.5 py-1 bg-red-50 text-red-600 border border-red-200 rounded-lg text-xs font-semibold hover:bg-red-100 transition-colors"
+              className="px-2.5 py-1 bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/50 rounded-lg text-xs font-semibold hover:bg-red-100 dark:hover:bg-red-950/70 transition-colors"
             >
               🗑️ Delete
             </button>
@@ -688,7 +688,7 @@ function ProjectFormModal({
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.95, opacity: 0 }}
-        className="bg-white rounded-3xl p-5 max-w-lg w-full shadow-modal space-y-4 max-h-[92vh] overflow-y-auto"
+        className="bg-white dark:bg-[#1C1C1E] border border-transparent dark:border-white/10 rounded-3xl p-5 max-w-lg w-full shadow-modal space-y-4 max-h-[92vh] overflow-y-auto"
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border pb-3">
