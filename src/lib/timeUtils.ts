@@ -9,27 +9,51 @@ export const IST = 'Asia/Kolkata'
 
 /** Returns the current Date object in IST */
 export function nowIST(): Date {
-  return toZonedTime(new Date(), IST)
+  const d = toZonedTime(new Date(), IST)
+  ;(d as any).__isZonedIST = true
+  return d
 }
 
 /** Format a Date in IST using date-fns format string */
 export function formatIST(date: Date, fmt: string): string {
+  if (!date) return ''
+  // If the date is already zoned to IST (e.g. from nowIST or parseISOtoIST),
+  // format directly with format() to avoid double-shifting the timezone.
+  if ((date as any).__isZonedIST) {
+    return format(date, fmt)
+  }
   return formatInTimeZone(date, IST, fmt)
 }
 
 /** Parse an ISO string and return the time in IST */
 export function parseISOtoIST(isoString: string): Date {
-  return toZonedTime(parseISO(isoString), IST)
+  const d = toZonedTime(parseISO(isoString), IST)
+  ;(d as any).__isZonedIST = true
+  return d
 }
 
 /** Get today's date string in IST as YYYY-MM-DD */
 export function todayIST(): string {
-  return formatIST(nowIST(), 'yyyy-MM-dd')
+  return formatInTimeZone(new Date(), IST, 'yyyy-MM-dd')
 }
 
-/** Convert a "HH:MM:SS" or "HH:MM" time string to minutes from midnight */
+/** Returns current HH:mm string in IST */
+export function currentISTTime(): string {
+  return formatInTimeZone(new Date(), IST, 'HH:mm')
+}
+
+/** Returns current minutes from midnight in IST */
+export function currentISTMinutes(): number {
+  const [h, m] = currentISTTime().split(':').map(Number)
+  return (h || 0) * 60 + (m || 0)
+}
+
+/** Convert a "HH:MM:SS" or "HH:MM" or "9:30 AM" time string to minutes from midnight */
 export function timeToMinutes(time: string): number {
-  const parts = time.split(':').map(Number)
+  if (!time) return 0
+  const parsed = parseTime(time)
+  const target = parsed || time
+  const parts = target.split(':').map(Number)
   const h = parts[0] || 0
   const m = parts[1] || 0
   return h * 60 + m

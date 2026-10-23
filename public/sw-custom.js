@@ -47,4 +47,19 @@ self.addEventListener('push', (event) => {
       })
     )
   }
+// Client message listener to display or schedule notifications directly via Service Worker
+self.addEventListener('message', (event) => {
+  if (!event.data) return
+
+  if (event.data.type === 'SHOW_NOTIFICATION' && event.data.payload) {
+    const p = event.data.payload
+    self.registration.showNotification(p.title, {
+      body: p.body,
+      icon: p.icon || '/icons/icon-192.png',
+      badge: '/icons/icon-192.png',
+      tag: p.tag || 'whats-next-alert',
+      data: p.data || { url: '/' },
+      vibrate: p.vibrate || [150, 80, 150],
+    })
+  }
 })

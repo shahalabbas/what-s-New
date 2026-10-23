@@ -85,6 +85,12 @@ describe('Push Notifications for Classes & Mess Food (5-Min Pre-Alerts)', () => 
       expect(payload.body).toContain('Starts at 2:00 PM')
       expect(payload.body).toContain('CR')
     })
+
+    it('formats title dynamically when minsRemaining is provided', () => {
+      expect(formatClassNotification(mockSession, 3).title).toBe('📚 Class in 3 Mins: Digital Product Strategy')
+      expect(formatClassNotification(mockSession, 1).title).toBe('📚 Class in 1 Min: Digital Product Strategy')
+      expect(formatClassNotification(mockSession, 0).title).toBe('📚 Class Starting Now: Digital Product Strategy')
+    })
   })
 
   describe('formatMessNotification (5-Min Pre-Alert with Food Items)', () => {
@@ -144,6 +150,12 @@ describe('Push Notifications for Classes & Mess Food (5-Min Pre-Alerts)', () => 
       const payload = formatMessNotification(longMeal)
       expect(payload.body.length).toBeLessThanOrEqual(140)
       expect(payload.body.endsWith('...')).toBe(true)
+    })
+
+    it('formats mess title dynamically based on minsRemaining', () => {
+      expect(formatMessNotification(mockMeal, mockDayMenu, 2).title).toContain('Lunch Starts in 2 Mins')
+      expect(formatMessNotification(mockMeal, mockDayMenu, 1).title).toContain('Lunch Starts in 1 Min')
+      expect(formatMessNotification(mockMeal, mockDayMenu, 0).title).toContain('Lunch is Now Serving')
     })
   })
 

@@ -8,7 +8,7 @@ import {
   formatMessNotification,
   type NotificationPermissionState,
 } from '../lib/notifications'
-import { nowIST, formatIST, todayIST, timeToMinutes } from '../lib/timeUtils'
+import { nowIST, formatIST, todayIST, timeToMinutes, currentISTMinutes } from '../lib/timeUtils'
 import type { ResolvedSession, MessMenu, MessMenuDay } from '../types'
 
 const PREF_CLASS_ALERTS = 'whats_next_class_alerts'
@@ -151,45 +151,46 @@ export function useNotifications(options?: {
     [permission, requestPermission]
   )
 
-  // Evaluates schedules against current time (triggers 5 minutes prior)
+  // Evaluates schedules against current time (triggers 5 minutes prior up to start/early session)
   const checkSchedules = useCallback(() => {
     if (permission !== 'granted') return
 
-    const now = nowIST()
-    const nowMinutes = timeToMinutes(formatIST(now, 'HH:mm'))
+    const nowMinutes = currentISTMinutes()
     const todayStr = todayIST()
 
-    // 1. Check Class Sessions (5 minutes before start)
+    // 1. Check Class Sessions (5 minutes before start up to 5 minutes into class)
     if (classAlertsEnabled && options?.sessions && options.sessions.length > 0) {
       for (const session of options.sessions) {
+        if (!session.start_time) continue
         const startMin = timeToMinutes(session.start_time)
         const targetMin = startMin - 5
-        const diff = nowMinutes - targetMin
 
-        // Trigger if current time is within [targetMin, targetMin + 2]
-        if (diff >= 0 && diff <= 2) {
+        // Window: from 5 mins before start up to 5 mins into class
+        if (nowMinutes >= targetMin && nowMinutes <= startMin + 5) {
           const dedupeKey = `whats_next_notified_5m_class_${session.id}_${todayStr}`
           try {
             if (!localStorage.getItem(dedupeKey)) {
               localStorage.setItem(dedupeKey, 'true')
-              sendLocalNotification(formatClassNotification(session))
+              const minsRemaining = startMin - nowMinutes
+              sendLocalNotification(formatClassNotification(session, minsRemaining))
             }
           } catch {}
         }
       }
     }
 
-    // 2. Check Mess Meals (5 minutes before start)
+    // 2. Check Mess Meals (5 minutes before start up to 15 minutes into meal)
     if (messAlertsEnabled && options?.messMenus && options.messMenus.length > 0) {
       for (const meal of options.messMenus) {
         if (meal.date && meal.date !== todayStr) continue
+        if (!meal.start_time) continue
 
         const startMin = timeToMinutes(meal.start_time)
+        const endMin = timeToMinutes(meal.end_time || '') || (startMin + 120)
         const targetMin = startMin - 5
-        const diff = nowMinutes - targetMin
 
-        // Trigger if current time is within [targetMin, targetMin + 2]
-        if (diff >= 0 && diff <= 2) {
+        // Window: from 5 mins before start up to 15 mins into meal
+        if (nowMinutes >= targetMin && nowMinutes <= Math.min(startMin + 15, endMin)) {
           const dedupeKey = `whats_next_notified_5m_mess_${meal.meal}_${todayStr}`
           try {
             if (!localStorage.getItem(dedupeKey)) {
@@ -197,7 +198,8 @@ export function useNotifications(options?: {
               const matchingDayMenu = options.dayMenus?.find(
                 (d) => d.meal.toLowerCase() === meal.meal.toLowerCase()
               )
-              sendLocalNotification(formatMessNotification(meal, matchingDayMenu))
+              const minsRemaining = startMin - nowMinutes
+              sendLocalNotification(formatMessNotification(meal, matchingDayMenu, minsRemaining))
             }
           } catch {}
         }
@@ -210,6 +212,49 @@ export function useNotifications(options?: {
   useEffect(() => {
     checkRef.current = checkSchedules
   }, [checkSchedules])
+
+  // Exact millisecond scheduling for today's upcoming 5-min pre-alerts
+  useEffect(() => {
+    if (permission !== 'granted') return
+
+    const nowMinutes = currentISTMinutes()
+    const nowSecs = new Date().getSeconds()
+    const activeTimeouts: NodeJS.Timeout[] = []
+
+    const scheduleTimer = (targetMin: number) => {
+      if (targetMin <= nowMinutes) return
+      const diffMinutes = targetMin - nowMinutes
+      const delayMs = diffMinutes * 60 * 1000 - nowSecs * 1000
+      if (delayMs > 0 && delayMs < 24 * 3600 * 1000) {
+        const t = setTimeout(() => {
+          checkRef.current()
+        }, delayMs)
+        activeTimeouts.push(t)
+      }
+    }
+
+    if (classAlertsEnabled && options?.sessions) {
+      for (const session of options.sessions) {
+        if (session.start_time) {
+          const startMin = timeToMinutes(session.start_time)
+          scheduleTimer(startMin - 5)
+        }
+      }
+    }
+
+    if (messAlertsEnabled && options?.messMenus) {
+      for (const meal of options.messMenus) {
+        if (meal.start_time) {
+          const startMin = timeToMinutes(meal.start_time)
+          scheduleTimer(startMin - 5)
+        }
+      }
+    }
+
+    return () => {
+      activeTimeouts.forEach((t) => clearTimeout(t))
+    }
+  }, [permission, classAlertsEnabled, messAlertsEnabled, options?.sessions, options?.messMenus])
 
   useEffect(() => {
     if (permission !== 'granted') return

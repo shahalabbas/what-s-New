@@ -44,9 +44,9 @@ export interface NotificationPayload {
 }
 
 /**
- * Format a rich notification dispatched 5 minutes before class starts
+ * Format a rich notification dispatched before class starts (5 minutes prior or starting now)
  */
-export function formatClassNotification(session: ResolvedSession): NotificationPayload {
+export function formatClassNotification(session: ResolvedSession, minsRemaining?: number): NotificationPayload {
   const courseName = session.course?.name || session.course_id || 'Class Session'
   const faculty = session.course?.faculty ? `with ${session.course.faculty.replace(/^Prof\.?\s*/i, 'Prof. ')}` : ''
   const room = session.room ? `Room ${session.room}` : 'CR'
@@ -58,8 +58,15 @@ export function formatClassNotification(session: ResolvedSession): NotificationP
 
   const bodyParts = [`Starts at ${startTime}`, room, sessionInfo, faculty].filter(Boolean)
 
+  let titlePrefix = '📚 Class in 5 Mins'
+  if (minsRemaining !== undefined) {
+    if (minsRemaining <= 0) titlePrefix = '📚 Class Starting Now'
+    else if (minsRemaining === 1) titlePrefix = '📚 Class in 1 Min'
+    else titlePrefix = `📚 Class in ${minsRemaining} Mins`
+  }
+
   return {
-    title: `📚 Class in 5 Mins: ${courseName}`,
+    title: `${titlePrefix}: ${courseName}`,
     body: bodyParts.join(' · '),
     tag: `class-5m-${session.id}`,
     icon: logo,
@@ -70,11 +77,12 @@ export function formatClassNotification(session: ResolvedSession): NotificationP
 }
 
 /**
- * Format a rich notification dispatched 5 minutes before mess meal starts, including the food items!
+ * Format a rich notification dispatched before mess meal starts, including the food items!
  */
 export function formatMessNotification(
   meal: MessMenu,
-  dayMenu?: MessMenuDay | null
+  dayMenu?: MessMenuDay | null,
+  minsRemaining?: number
 ): NotificationPayload {
   const mealName =
     dayMenu?.label ||
@@ -106,8 +114,15 @@ export function formatMessNotification(
 
   const logo = getAppLogoUrl()
 
+  let titlePrefix = `🍽️ ${mealName} Starts in 5 Mins`
+  if (minsRemaining !== undefined) {
+    if (minsRemaining <= 0) titlePrefix = `🍽️ ${mealName} is Now Serving`
+    else if (minsRemaining === 1) titlePrefix = `🍽️ ${mealName} Starts in 1 Min`
+    else titlePrefix = `🍽️ ${mealName} Starts in ${minsRemaining} Mins`
+  }
+
   return {
-    title: `🍽️ ${mealName} Starts in 5 Mins (${timeWindow})`,
+    title: `${titlePrefix} (${timeWindow})`,
     body: dishesText,
     tag: `mess-5m-${meal.meal}-${meal.date || ''}`,
     icon: logo,
