@@ -14,6 +14,13 @@ export const DEFAULT_PREFS: NotificationPrefs = {
   meal_types: ['breakfast', 'lunch', 'hi_tea', 'dinner'],
 }
 
+export const DEFAULT_VAPID_PUBLIC_KEY =
+  'BIc5G8QcBNOgpxaeCkfAXG5Ild8JkGnUuzBVywWZr4H7X6ENwWYm18oxXz5KXv8IIQ1iN76mxb03JmhPJI3KkvY'
+
+export function getVapidPublicKey(): string {
+  return import.meta.env.VITE_VAPID_PUBLIC_KEY || DEFAULT_VAPID_PUBLIC_KEY
+}
+
 /**
  * Converts a base64 VAPID public key into a Uint8Array for PushManager
  */
@@ -118,7 +125,7 @@ export async function getDevicePushSubscription(): Promise<PushSubscription | nu
  */
 export async function subscribeDeviceToPush(
   userId: string,
-  vapidPublicKey: string
+  vapidPublicKey: string = getVapidPublicKey()
 ): Promise<{ success: boolean; error?: string }> {
   if (typeof window === 'undefined' || !('serviceWorker' in navigator) || !('PushManager' in window)) {
     return { success: false, error: 'Web Push is not supported on this browser' }
@@ -129,6 +136,11 @@ export async function subscribeDeviceToPush(
       success: false,
       error: 'To enable notifications on iPhone, please tap Safari’s Share button ⎋ and choose "Add to Home Screen".',
     }
+  }
+
+  const keyToUse = vapidPublicKey || getVapidPublicKey()
+  if (!keyToUse) {
+    return { success: false, error: 'VAPID public key not configured' }
   }
 
   try {
@@ -144,7 +156,7 @@ export async function subscribeDeviceToPush(
 
     let sub = await reg.pushManager.getSubscription()
     if (!sub) {
-      const convertedVapidKey = urlBase64ToUint8Array(vapidPublicKey)
+      const convertedVapidKey = urlBase64ToUint8Array(keyToUse)
       sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: convertedVapidKey as unknown as BufferSource,

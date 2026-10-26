@@ -31,6 +31,7 @@ import {
   isIosSafariNotInstalled,
   type NotificationPrefs,
   DEFAULT_PREFS,
+  getVapidPublicKey,
 } from '../../lib/pushSubscription'
 import type { MealType, Project, ProjectType } from '../../types'
 import { MOCK_TERMS } from '../../lib/mockData'
@@ -95,7 +96,7 @@ export function Dashboard() {
   }
 
   // ─── 24/7 Push Reminders State ─────────────────────────────────────
-  const vapidPublicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY || ''
+  const vapidPublicKey = getVapidPublicKey()
   const [isPushSubscribed, setIsPushSubscribed] = useState<boolean>(false)
   const [isSubscribingPush, setIsSubscribingPush] = useState<boolean>(false)
   const [pushPrefs, setPushPrefs] = useState<NotificationPrefs>(DEFAULT_PREFS)
@@ -128,10 +129,6 @@ export function Dashboard() {
 
   const handleTurnOnPush = async () => {
     if (!user?.id) return
-    if (!vapidPublicKey) {
-      toast.error('VAPID public key not configured in environment')
-      return
-    }
     setIsSubscribingPush(true)
     const res = await subscribeDeviceToPush(user.id, vapidPublicKey)
     setIsSubscribingPush(false)
