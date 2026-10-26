@@ -268,3 +268,7 @@ BEGIN
     );
   END IF;
 END $$;
+
+-- 9. Refresh PostgREST schema cache immediately
+NOTIFY pgrst, 'reload schema';
+
