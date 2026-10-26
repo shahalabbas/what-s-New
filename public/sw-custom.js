@@ -1,11 +1,14 @@
-// Custom service worker extension for What's Next notification handling
+// ═════════════════════════════════════════════════════════════════════════════
+// Custom Service Worker Extension for What's Next 24/7 Web Push & Notifications
+// ═════════════════════════════════════════════════════════════════════════════
+
+// 1. Notification Click: Focus open app window and navigate to data.url, or open new window
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
   const targetUrl = (event.notification.data && event.notification.data.url) || '/'
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      // If a window is already open, focus it and navigate
       for (const client of clientList) {
         if (client.url.includes(self.location.origin) && 'focus' in client) {
           if ('navigate' in client) {
@@ -14,7 +17,6 @@ self.addEventListener('notificationclick', (event) => {
           return client.focus()
         }
       }
-      // If no window is open, open a new one
       if (self.clients.openWindow) {
         return self.clients.openWindow(targetUrl)
       }
@@ -22,7 +24,7 @@ self.addEventListener('notificationclick', (event) => {
   )
 })
 
-// Optional background push handler for server-triggered Web Push (VAPID)
+// 2. Push Event: Wake locked device and display banner with app logo & details
 self.addEventListener('push', (event) => {
   if (!event.data) return
 
@@ -34,20 +36,42 @@ self.addEventListener('push', (event) => {
       icon: payload.icon || '/icons/icon-192.png',
       badge: '/icons/icon-192.png',
       tag: payload.tag || 'whats-next-alert',
-      data: payload.data || { url: '/' },
-      vibrate: [200, 100, 200],
+      data: { url: payload.url || (payload.data && payload.data.url) || '/' },
+      vibrate: payload.vibrate || [150, 80, 150],
     }
     event.waitUntil(self.registration.showNotification(title, options))
-  } catch (err) {
+  } catch (_err) {
     event.waitUntil(
       self.registration.showNotification("What's Next", {
         body: event.data.text(),
         icon: '/icons/icon-192.png',
+        badge: '/icons/icon-192.png',
         data: { url: '/' },
       })
     )
   }
-// Client message listener to display or schedule notifications directly via Service Worker
+})
+
+// 3. Push Subscription Change: Re-subscribe if the push service refreshed credentials
+self.addEventListener('pushsubscriptionchange', (event) => {
+  event.waitUntil(
+    self.registration.pushManager
+      .getSubscription()
+      .then((existingSub) => {
+        if (!existingSub) return null
+        return self.registration.pushManager.subscribe(existingSub.options)
+      })
+      .then((newSub) => {
+        if (!newSub) return
+        return self.clients.matchAll({ type: 'window' }).then((clients) => {
+          clients.forEach((c) => c.postMessage({ type: 'PUSH_SUBSCRIPTION_CHANGED', subscription: newSub.toJSON() }))
+        })
+      })
+      .catch((err) => console.warn('Failed to renew push subscription:', err))
+  )
+})
+
+// 4. Message Event: Direct dispatch bridge from frontend
 self.addEventListener('message', (event) => {
   if (!event.data) return
 

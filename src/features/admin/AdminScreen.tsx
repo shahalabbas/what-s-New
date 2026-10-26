@@ -39,12 +39,13 @@ import {
 import {
   formatIST,
   todayIST,
+  parseISOtoIST,
   fromDatetimeLocalToIST,
 } from '../../lib/timeUtils'
 import { PlacementsAdmin } from './PlacementsAdmin'
 import { ProjectsAdmin } from './ProjectsAdmin'
 
-type AdminTab = 'placements' | 'projects' | 'timetable' | 'mess' | 'batches' | 'events' | 'courses'
+type AdminTab = 'placements' | 'projects' | 'timetable' | 'mess' | 'batches' | 'events' | 'courses' | 'reminders'
 
 export function AdminScreen() {
   const [tab, setTab] = useState<AdminTab>('placements')
@@ -63,6 +64,7 @@ export function AdminScreen() {
     { key: 'projects', label: 'Projects', emoji: '📁' },
     { key: 'timetable', label: 'Timetable', emoji: '📅' },
     { key: 'mess', label: 'Mess Menu', emoji: '🍽' },
+    { key: 'reminders', label: 'Reminders', emoji: '🔔' },
     { key: 'batches', label: 'Rollback', emoji: '🔄' },
     { key: 'events', label: 'Events', emoji: '📣' },
     { key: 'courses', label: 'Courses', emoji: '📚' },
@@ -109,6 +111,7 @@ export function AdminScreen() {
         {tab === 'projects' && <ProjectsAdmin courses={courses} />}
         {tab === 'timetable' && <TimetableIngestAdmin courses={courses} />}
         {tab === 'mess' && <MessIngestAdmin />}
+        {tab === 'reminders' && <RemindersAdmin />}
         {tab === 'batches' && <BatchesHistoryAdmin />}
         {tab === 'events' && <EventsAdmin />}
         {tab === 'courses' && <CoursesAdmin courses={courses} onCoursesUpdated={setCourses} />}
@@ -1559,6 +1562,225 @@ function CoursesAdmin({
             </div>
           </div>
         ))}
+      </div>
+    </div>
+  )
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// 7. REMINDERS ADMIN (Background Push Notifications)
+// ═════════════════════════════════════════════════════════════════════════════
+
+function RemindersAdmin() {
+  const [loading, setLoading] = useState(true)
+  const [testing, setTesting] = useState(false)
+  const [stats, setStats] = useState({
+    subscribedDevices: 0,
+    remindersSentToday: 0,
+    lastSent: null as { kind: string; item_key: string; sent_at: string } | null,
+  })
+  const [recentSent, setRecentSent] = useState<any[]>([])
+
+  const fetchStats = useCallback(async () => {
+    if (!isConfiguredSupabase) {
+      setLoading(false)
+      return
+    }
+    setLoading(true)
+    try {
+      // 1. Device count
+      const { count: subCount } = await supabase
+        .from('push_subscriptions')
+        .select('*', { count: 'exact', head: true })
+
+      // 2. Reminders sent today (IST)
+      const startOfTodayIso = new Date(todayIST() + 'T00:00:00+05:30').toISOString()
+      const { count: sentTodayCount } = await supabase
+        .from('notifications_sent')
+        .select('*', { count: 'exact', head: true })
+        .gte('sent_at', startOfTodayIso)
+
+      // 3. Last sent item & recent items
+      const { data: recent } = await supabase
+        .from('notifications_sent')
+        .select('id, user_id, kind, item_key, sent_at')
+        .order('sent_at', { ascending: false })
+        .limit(8)
+
+      setStats({
+        subscribedDevices: subCount || 0,
+        remindersSentToday: sentTodayCount || 0,
+        lastSent: recent && recent.length > 0 ? recent[0] : null,
+      })
+      setRecentSent(recent || [])
+    } catch (e: any) {
+      console.error('Failed to fetch reminder stats', e)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchStats()
+  }, [fetchStats])
+
+  const sendTestNotification = async () => {
+    if (!isConfiguredSupabase) {
+      toast.error('Supabase is not configured')
+      return
+    }
+    setTesting(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('send-reminders', {
+        body: { mode: 'test' },
+      })
+
+      if (error) {
+        throw error
+      }
+
+      if (data?.sent && data.sent > 0) {
+        toast.success(data.message || `Test notification sent to ${data.sent} device(s)!`)
+      } else if (data?.message) {
+        toast(data.message, { icon: 'ℹ️' })
+      } else {
+        toast.success('Test notification triggered!')
+      }
+
+      await fetchStats()
+    } catch (err: any) {
+      console.error('Test notification failed:', err)
+      toast.error(err?.message || 'Failed to send test push notification')
+    } finally {
+      setTesting(false)
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-base font-bold text-primary-text">Push Notification Reminders</h2>
+          <p className="text-xs text-secondary-text">pg_cron 5-min dispatch & Web Push engine</p>
+        </div>
+        <button
+          onClick={fetchStats}
+          disabled={loading}
+          className="px-3 py-1.5 bg-surface text-secondary-text hover:text-primary-text rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors"
+        >
+          <span>🔄</span> Refresh
+        </button>
+      </div>
+
+      {/* Status Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="bg-white rounded-2xl p-4 shadow-card border border-border">
+          <div className="text-xs font-semibold text-secondary-text">Subscribed Devices</div>
+          <div className="text-2xl font-bold font-mono text-primary-text mt-1">
+            {loading ? '...' : stats.subscribedDevices}
+          </div>
+          <p className="text-[11px] text-secondary-text/80 mt-1">Active phone & browser endpoints</p>
+        </div>
+
+        <div className="bg-white rounded-2xl p-4 shadow-card border border-border">
+          <div className="text-xs font-semibold text-secondary-text">Sent Today (IST)</div>
+          <div className="text-2xl font-bold font-mono text-live mt-1">
+            {loading ? '...' : stats.remindersSentToday}
+          </div>
+          <p className="text-[11px] text-secondary-text/80 mt-1">Delivered 5-min reminders</p>
+        </div>
+
+        <div className="bg-white rounded-2xl p-4 shadow-card border border-border">
+          <div className="text-xs font-semibold text-secondary-text">Engine Status</div>
+          <div className="flex items-center gap-1.5 mt-1">
+            <span className="w-2.5 h-2.5 rounded-full bg-live animate-pulse" />
+            <span className="text-sm font-bold text-primary-text">pg_cron Active</span>
+          </div>
+          <p className="text-[11px] text-secondary-text/80 mt-1">Every min · ~9 calls/day via pg_net</p>
+        </div>
+      </div>
+
+      {/* Test Push Card */}
+      <div className="bg-white rounded-2xl p-5 shadow-card border border-border space-y-3">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h3 className="text-sm font-bold text-primary-text flex items-center gap-1.5">
+              <span>🔔</span> Send Test Push Notification
+            </h3>
+            <p className="text-xs text-secondary-text mt-1 leading-relaxed">
+              Triggers a live Web Push notification via the Supabase Edge Function to all devices registered under your admin account.
+            </p>
+          </div>
+          <button
+            onClick={sendTestNotification}
+            disabled={testing}
+            className="flex-shrink-0 px-4 py-2 bg-accent text-white rounded-xl text-xs font-semibold shadow-sm hover:opacity-95 active:scale-95 transition-all disabled:opacity-50 flex items-center gap-1.5"
+          >
+            {testing ? (
+              <>
+                <span className="animate-spin text-sm">⏳</span>
+                <span>Sending...</span>
+              </>
+            ) : (
+              <>
+                <span>🚀</span>
+                <span>Send to My Devices</span>
+              </>
+            )}
+          </button>
+        </div>
+        <div className="bg-surface p-3 rounded-xl border border-border/50 text-[11px] text-secondary-text space-y-1">
+          <div className="font-semibold text-primary-text">💡 How it works:</div>
+          <div>• Push arrives even if your browser or phone screen is closed / asleep.</div>
+          <div>• If you haven&apos;t turned on reminders on this device, go to your <strong>Profile sheet</strong> and tap <strong>Turn on reminders</strong>.</div>
+          <div>• On iOS (Safari), ensure What&apos;s Next is installed to your Home Screen first.</div>
+        </div>
+      </div>
+
+      {/* Last Run & Recent Deliveries */}
+      <div className="bg-white rounded-2xl p-5 shadow-card border border-border space-y-3">
+        <h3 className="text-sm font-bold text-primary-text flex items-center gap-1.5">
+          <span>📋</span> Recent Reminders Sent
+        </h3>
+
+        {stats.lastSent && (
+          <div className="p-3 bg-surface rounded-xl text-xs flex items-center justify-between">
+            <span className="text-secondary-text">Last delivery:</span>
+            <span className="font-mono font-medium text-primary-text">
+              {formatIST(parseISOtoIST(stats.lastSent.sent_at), 'dd MMM yyyy, HH:mm:ss')} ({stats.lastSent.kind})
+            </span>
+          </div>
+        )}
+
+        {recentSent.length === 0 ? (
+          <div className="text-center py-6 text-xs text-secondary-text">
+            No reminders have been logged yet.
+          </div>
+        ) : (
+          <div className="divide-y divide-border/60">
+            {recentSent.map((item) => (
+              <div key={item.id} className="py-2.5 flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2">
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                    item.kind === 'class'
+                      ? 'bg-blue-50 text-blue-700'
+                      : item.kind === 'meal'
+                      ? 'bg-amber-50 text-amber-700'
+                      : 'bg-purple-50 text-purple-700'
+                  }`}>
+                    {item.kind}
+                  </span>
+                  <span className="font-mono text-primary-text text-[11px] truncate max-w-[200px] sm:max-w-xs">
+                    {item.item_key}
+                  </span>
+                </div>
+                <span className="text-secondary-text font-mono text-[11px]">
+                  {formatIST(parseISOtoIST(item.sent_at), 'dd MMM, HH:mm')}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )

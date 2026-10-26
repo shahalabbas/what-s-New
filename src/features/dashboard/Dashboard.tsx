@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
@@ -22,6 +22,16 @@ import {
 } from '../../lib/timeUtils'
 import { BottomSheet } from '../../components/BottomSheet'
 import { PlacementDeadlineWidget } from './PlacementDeadlineWidget'
+import {
+  subscribeDeviceToPush,
+  unsubscribeDeviceFromPush,
+  getDevicePushSubscription,
+  getNotificationPrefs,
+  saveNotificationPrefs,
+  isIosSafariNotInstalled,
+  type NotificationPrefs,
+  DEFAULT_PREFS,
+} from '../../lib/pushSubscription'
 import type { MealType, Project, ProjectType } from '../../types'
 import { MOCK_TERMS } from '../../lib/mockData'
 
@@ -44,10 +54,10 @@ export function Dashboard() {
   const schedule = useSchedule()
   const mess = useMessMenu()
   const projects = useProjects()
-  const { user, profile, signOut, isAdmin } = useAuth()
+  const { user, profile, signOut } = useAuth()
   const { themePref, setTheme } = useTheme()
   useNow()
-  const notifications = useNotifications({
+  useNotifications({
     sessions: schedule.todaySessions,
     messMenus: mess.menus,
     dayMenus: mess.todayDayMenus,
@@ -82,6 +92,82 @@ export function Dashboard() {
     try {
       localStorage.setItem('whats_next_is_placed', String(placed))
     } catch {}
+  }
+
+  // ─── 24/7 Push Reminders State ─────────────────────────────────────
+  const vapidPublicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY || ''
+  const [isPushSubscribed, setIsPushSubscribed] = useState<boolean>(false)
+  const [isSubscribingPush, setIsSubscribingPush] = useState<boolean>(false)
+  const [pushPrefs, setPushPrefs] = useState<NotificationPrefs>(DEFAULT_PREFS)
+  const [isIosNotInstalled] = useState<boolean>(isIosSafariNotInstalled)
+
+  const [showRemindersHint, setShowRemindersHint] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('whats_next_dismiss_reminder_hint') !== 'true'
+    } catch {
+      return false
+    }
+  })
+
+  const dismissRemindersHint = () => {
+    setShowRemindersHint(false)
+    try {
+      localStorage.setItem('whats_next_dismiss_reminder_hint', 'true')
+    } catch {}
+  }
+
+  useEffect(() => {
+    if (!user?.id) return
+    getDevicePushSubscription().then((sub) => {
+      setIsPushSubscribed(Boolean(sub))
+    })
+    getNotificationPrefs(user.id).then((p) => {
+      setPushPrefs(p)
+    })
+  }, [user?.id, showProfileSheet])
+
+  const handleTurnOnPush = async () => {
+    if (!user?.id) return
+    if (!vapidPublicKey) {
+      toast.error('VAPID public key not configured in environment')
+      return
+    }
+    setIsSubscribingPush(true)
+    const res = await subscribeDeviceToPush(user.id, vapidPublicKey)
+    setIsSubscribingPush(false)
+    if (res.success) {
+      setIsPushSubscribed(true)
+      toast.success('24/7 Reminders enabled for this device!')
+    } else {
+      toast.error(res.error || 'Could not enable reminders')
+    }
+  }
+
+  const handleTurnOffPush = async () => {
+    if (!user?.id) return
+    const success = await unsubscribeDeviceFromPush(user.id)
+    if (success) {
+      setIsPushSubscribed(false)
+      toast.success('Reminders turned off on this device')
+    }
+  }
+
+  const handleTogglePref = async (key: 'classes' | 'meals', val: boolean) => {
+    if (!user?.id) return
+    const updated = { ...pushPrefs, [key]: val }
+    setPushPrefs(updated)
+    await saveNotificationPrefs(user.id, updated)
+  }
+
+  const handleToggleMealType = async (mealType: string) => {
+    if (!user?.id) return
+    const currentTypes = pushPrefs.meal_types || []
+    const updatedTypes = currentTypes.includes(mealType)
+      ? currentTypes.filter((t) => t !== mealType)
+      : [...currentTypes, mealType]
+    const updated = { ...pushPrefs, meal_types: updatedTypes }
+    setPushPrefs(updated)
+    await saveNotificationPrefs(user.id, updated)
   }
 
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -180,6 +266,31 @@ export function Dashboard() {
 
       {/* Main Content: Strict DB Data Binding */}
       <main className="px-4 space-y-3.5 pt-2 max-w-md mx-auto">
+        {/* Small one-time dismissible reminders hint */}
+        {showRemindersHint && !isPushSubscribed && (
+          <div className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-white dark:bg-[#1C1C1E] border border-border dark:border-white/10 shadow-2xs">
+            <button
+              type="button"
+              onClick={() => setShowProfileSheet(true)}
+              className="flex items-center gap-2.5 min-w-0 flex-1 text-left"
+            >
+              <span className="text-lg flex-shrink-0">🔔</span>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold text-primary-text truncate">Get 5-min reminders</p>
+                <p className="text-[11px] text-secondary-text truncate">Get a heads-up 5 minutes before class and meals</p>
+              </div>
+            </button>
+            <button
+              type="button"
+              onClick={dismissRemindersHint}
+              className="w-7 h-7 rounded-full bg-surface dark:bg-white/10 text-secondary-text hover:text-primary-text flex items-center justify-center text-xs flex-shrink-0"
+              title="Dismiss"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
         {/* 1. TWO-COLUMN SIDE-BY-SIDE GRID (Up Next & Food from DB) */}
         <div className="grid grid-cols-2 gap-3.5">
           <UpNextCard
@@ -721,106 +832,152 @@ export function Dashboard() {
             </div>
           </div>
 
-          {/* Push Notifications Card (Automatically Active for All Registered Users) */}
+          {/* ─── REMINDERS SECTION (24/7 Background Push via VAPID & pg_cron) ─── */}
           <div className="bg-surface/70 dark:bg-white/5 rounded-2xl p-4 border border-border/80 space-y-3">
             <div className="space-y-1">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-primary-text flex items-center gap-1.5">
                   <span>🔔</span>
-                  <span>Push Notifications</span>
+                  <span>Reminders (5 Min Prior)</span>
                 </span>
                 <span
                   className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
-                    notifications.permission === 'granted'
+                    isPushSubscribed
                       ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
-                      : notifications.permission === 'denied'
+                      : isIosNotInstalled
+                      ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
+                      : typeof Notification !== 'undefined' && Notification.permission === 'denied'
                       ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300'
-                      : notifications.permission === 'unsupported'
-                      ? 'bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-slate-300'
                       : 'bg-accent/10 text-accent'
                   }`}
                 >
-                  {notifications.permission === 'granted'
-                    ? 'Active for All Students'
-                    : notifications.permission === 'denied'
-                    ? 'Permission Blocked'
-                    : notifications.permission === 'unsupported'
-                    ? 'Add to Home'
-                    : 'Tap to Allow'}
+                  {isPushSubscribed
+                    ? 'Active (24/7 Push)'
+                    : isIosNotInstalled
+                    ? 'Install Required'
+                    : typeof Notification !== 'undefined' && Notification.permission === 'denied'
+                    ? 'Blocked in Settings'
+                    : 'Off'}
                 </span>
               </div>
               <p className="text-[11px] text-secondary-text leading-relaxed">
-                Automatically enabled for all registered students with the official app logo: alerts arrive <strong>5 minutes before each class</strong> and <strong>5 minutes before mess meals</strong> (with complete food items).
+                Receive server-delivered push alerts on your lock screen <strong>5 minutes before each class</strong> and <strong>5 minutes before mess meals</strong> (with complete dish menus).
               </p>
             </div>
 
-            {notifications.permission !== 'granted' ? (
-              <div className="pt-0.5">
-                {notifications.permission === 'unsupported' ? (
-                  <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-800 dark:text-amber-300 space-y-1">
-                    <p className="font-semibold">📲 iOS / iPhone Home Screen Required</p>
-                    <p>To enable notifications on iPhone, tap Safari’s Share button ⎋ and choose <strong>"Add to Home Screen"</strong>, then open What’s Next from your home screen.</p>
-                  </div>
-                ) : notifications.permission === 'denied' ? (
-                  <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-[11px] text-rose-800 dark:text-rose-300 space-y-1">
-                    <p className="font-semibold">⚠️ Notifications Blocked</p>
-                    <p>Please allow notifications in your phone’s browser site permissions to receive automated 5-minute class & mess alerts.</p>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      const res = await notifications.requestPermission()
-                      if (res === 'granted') {
-                        toast.success('Notifications enabled! 5-min class and mess alerts are active.')
-                      } else if (res === 'denied') {
-                        toast.error('Permission was denied in browser.')
-                      }
-                    }}
-                    className="w-full py-2.5 px-3 rounded-xl bg-accent text-white text-xs font-bold shadow-xs hover:bg-accent/90 transition-all flex items-center justify-center gap-1.5"
-                  >
-                    <span>🔔</span>
-                    <span>Allow Phone Notifications</span>
-                  </button>
-                )}
+            {/* Condition 1: iOS Safari not added to Home Screen */}
+            {isIosNotInstalled ? (
+              <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-900 dark:text-amber-300 space-y-1.5">
+                <p className="font-bold flex items-center gap-1.5">
+                  <span>📲</span>
+                  <span>Add What's Next to your Home Screen to get reminders</span>
+                </p>
+                <p className="leading-relaxed">
+                  Apple requires Web Push apps to run from the Home Screen on iOS 16.4+. Tap Safari's Share button <span className="font-mono font-bold">⎋</span> and choose <strong>"Add to Home Screen"</strong>, then open What's Next from your home screen.
+                </p>
               </div>
+            ) : typeof Notification !== 'undefined' && Notification.permission === 'denied' ? (
+              /* Condition 2: Permission denied in phone settings */
+              <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-[11px] text-rose-900 dark:text-rose-300 space-y-1.5">
+                <p className="font-bold flex items-center gap-1.5">
+                  <span>⚠️</span>
+                  <span>Notifications Blocked</span>
+                </p>
+                <p className="leading-relaxed">
+                  Notification access is disabled. To re-enable reminders, open your phone's <strong>Settings &gt; Safari / What's Next &gt; Notifications</strong> and allow alerts.
+                </p>
+              </div>
+            ) : !isPushSubscribed ? (
+              /* Condition 3: Not subscribed yet - clean "Turn on reminders" button */
+              <button
+                type="button"
+                disabled={isSubscribingPush}
+                onClick={handleTurnOnPush}
+                className="w-full py-2.5 px-3 rounded-xl bg-accent text-white text-xs font-bold shadow-xs hover:bg-accent/90 disabled:opacity-50 transition-all flex items-center justify-center gap-1.5"
+              >
+                {isSubscribingPush ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Connecting Device...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>🔔</span>
+                    <span>Turn on reminders</span>
+                  </>
+                )}
+              </button>
             ) : (
-              <div className="space-y-2 pt-0.5">
-                <div className="flex items-center gap-2 p-2.5 rounded-xl bg-white/60 dark:bg-white/5 border border-border/60 dark:border-white/5 text-[11px] text-secondary-text">
-                  <img src="/icons/icon-192.png" alt="App Logo" className="w-5 h-5 rounded-md flex-shrink-0" />
-                  <span>5-minute pre-alerts for classes & food menus are active for your account.</span>
+              /* Condition 4: Subscribed - Toggles & Device Management */
+              <div className="space-y-3 pt-1 border-t border-border/60 dark:border-white/10">
+                {/* Class Reminders Toggle */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-bold text-primary-text">Class Reminders</p>
+                    <p className="text-[10px] text-secondary-text">5 minutes before scheduled session starts</p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={pushPrefs.classes}
+                    onChange={(e) => handleTogglePref('classes', e.target.checked)}
+                    className="w-4 h-4 accent-accent rounded cursor-pointer"
+                  />
                 </div>
 
-                {isAdmin && (
-                  <div className="pt-1 space-y-1.5 border-t border-border/50 dark:border-white/5">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-secondary-text">Admin Test Triggers</p>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          const sent = await notifications.sendTestNotification('class')
-                          if (sent) toast.success('5-min class alert pushed with app logo!')
-                          else toast.error('Could not deliver notification')
-                        }}
-                        className="py-2 px-2.5 rounded-xl text-[11px] font-bold bg-white dark:bg-[#1C1C1E] text-slate-700 dark:text-slate-200 border border-border dark:border-white/10 hover:border-slate-300 transition-all flex items-center justify-center gap-1.5"
-                      >
-                        <span>📚 Test 5-Min Class</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          const sent = await notifications.sendTestNotification('mess')
-                          if (sent) toast.success('5-min mess alert with food & logo pushed!')
-                          else toast.error('Could not deliver notification')
-                        }}
-                        className="py-2 px-2.5 rounded-xl text-[11px] font-bold bg-white dark:bg-[#1C1C1E] text-slate-700 dark:text-slate-200 border border-border dark:border-white/10 hover:border-slate-300 transition-all flex items-center justify-center gap-1.5"
-                      >
-                        <span>🍽️ Test 5-Min Food</span>
-                      </button>
+                {/* Meal Reminders Toggle */}
+                <div className="space-y-2 pt-1 border-t border-border/40 dark:border-white/5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-primary-text">Meal Reminders</p>
+                      <p className="text-[10px] text-secondary-text">5 minutes before dining starts, with food menu</p>
                     </div>
+                    <input
+                      type="checkbox"
+                      checked={pushPrefs.meals}
+                      onChange={(e) => handleTogglePref('meals', e.target.checked)}
+                      className="w-4 h-4 accent-accent rounded cursor-pointer"
+                    />
                   </div>
-                )}
+
+                  {pushPrefs.meals && (
+                    <div className="grid grid-cols-4 gap-1.5 pt-1">
+                      {[
+                        { id: 'breakfast', label: 'Breakfast' },
+                        { id: 'lunch', label: 'Lunch' },
+                        { id: 'hi_tea', label: 'Hi-Tea' },
+                        { id: 'dinner', label: 'Dinner' },
+                      ].map((m) => {
+                        const isSelected = pushPrefs.meal_types?.includes(m.id)
+                        return (
+                          <button
+                            key={m.id}
+                            type="button"
+                            onClick={() => handleToggleMealType(m.id)}
+                            className={`py-1.5 px-1 rounded-lg text-[10px] font-bold transition-all text-center ${
+                              isSelected
+                                ? 'bg-accent text-white shadow-2xs'
+                                : 'bg-surface dark:bg-white/5 text-secondary-text border border-border dark:border-white/10'
+                            }`}
+                          >
+                            {m.label}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Unsubscribe device action */}
+                <div className="pt-2 border-t border-border/40 dark:border-white/5 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={handleTurnOffPush}
+                    className="text-[11px] font-semibold text-rose-600 dark:text-rose-400 hover:underline flex items-center gap-1"
+                  >
+                    <span>✕</span>
+                    <span>Turn off on this device</span>
+                  </button>
+                </div>
               </div>
             )}
           </div>
