@@ -8,6 +8,7 @@ import { useMessMenu } from '../../hooks/useMessMenu'
 import { useProjects } from '../../hooks/useProjects'
 import { useNow } from '../../hooks/useNow'
 import { useNotifications } from '../../hooks/useNotifications'
+import { sendSampleTrialNotification } from '../../lib/notifications'
 import toast from 'react-hot-toast'
 import {
   formatTime12,
@@ -127,6 +128,14 @@ export function Dashboard() {
     })
   }, [user?.id, showProfileSheet])
 
+  // One-time trial sample notification dispatched to every user once
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('Notification' in window)) return
+    if (Notification.permission === 'granted') {
+      sendSampleTrialNotification().catch(() => {})
+    }
+  }, [])
+
   const handleTurnOnPush = async () => {
     if (!user?.id) return
     setIsSubscribingPush(true)
@@ -135,6 +144,8 @@ export function Dashboard() {
     if (res.success) {
       setIsPushSubscribed(true)
       toast.success('24/7 Reminders enabled for this device!')
+      // Dispatch sample notification trial immediately to the user's screen
+      sendSampleTrialNotification(true).catch(() => {})
     } else {
       toast.error(res.error || 'Could not enable reminders')
     }

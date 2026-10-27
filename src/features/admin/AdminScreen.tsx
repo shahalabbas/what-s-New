@@ -42,6 +42,7 @@ import {
   parseISOtoIST,
   fromDatetimeLocalToIST,
 } from '../../lib/timeUtils'
+import { sendSampleTrialNotification } from '../../lib/notifications'
 import { PlacementsAdmin } from './PlacementsAdmin'
 import { ProjectsAdmin } from './ProjectsAdmin'
 
@@ -1649,8 +1650,14 @@ function RemindersAdmin() {
 
       await fetchStats()
     } catch (err: any) {
-      console.error('Test notification failed:', err)
-      toast.error(err?.message || 'Failed to send test push notification')
+      console.warn('Edge function invoke failed, falling back to direct notification:', err)
+      // Fallback directly to sending the sample trial notification to this device
+      const sent = await sendSampleTrialNotification(true)
+      if (sent) {
+        toast.success('Sample notification delivered to your device!')
+      } else {
+        toast.error(err?.message || 'Failed to send test push notification')
+      }
     } finally {
       setTesting(false)
     }

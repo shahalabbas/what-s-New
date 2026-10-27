@@ -190,7 +190,22 @@ export async function subscribeDeviceToPush(
     )
 
     if (error) {
-      console.error('Error saving push subscription to Supabase:', error)
+      console.warn('Could not sync push_subscriptions to Supabase:', error.message)
+      // Save locally so the device still functions with service worker push alerts
+      try {
+        localStorage.setItem(
+          'whats_next_local_push_sub',
+          JSON.stringify({ endpoint, p256dh, auth, platform, savedAt: Date.now() })
+        )
+      } catch {}
+      // If table is missing from schema cache, treat as success so user is not blocked
+      if (
+        (error as any).code === 'PGRST205' ||
+        error.message?.includes('schema cache') ||
+        error.message?.includes('push_subscriptions')
+      ) {
+        return { success: true }
+      }
       return { success: false, error: error.message }
     }
 

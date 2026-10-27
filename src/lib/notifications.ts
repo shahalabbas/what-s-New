@@ -173,3 +173,41 @@ export async function sendLocalNotification(payload: NotificationPayload): Promi
     return false
   }
 }
+
+export const TRIAL_NOTIFICATION_KEY = 'whats_next_trial_notification_sample_v1'
+
+/**
+ * Dispatches one sample notification to the user as a trial (only once per device)
+ */
+export async function sendSampleTrialNotification(force = false): Promise<boolean> {
+  try {
+    if (typeof window === 'undefined') return false
+    if (!force) {
+      const alreadySent = localStorage.getItem(TRIAL_NOTIFICATION_KEY)
+      if (alreadySent === 'true') {
+        return false
+      }
+    }
+
+    const logo = getAppLogoUrl()
+    const success = await sendLocalNotification({
+      title: "🔔 What's Next · Notification Trial",
+      body: "Sample reminder: You will receive 5-min alerts before classes and mess meals with live dish menus!",
+      tag: 'whats-next-trial-sample',
+      icon: logo,
+      badge: logo,
+      data: { url: '/' },
+      vibrate: [200, 100, 200],
+    })
+
+    if (success) {
+      try {
+        localStorage.setItem(TRIAL_NOTIFICATION_KEY, 'true')
+      } catch {}
+    }
+    return success
+  } catch (err) {
+    console.error('Failed to dispatch sample trial notification:', err)
+    return false
+  }
+}
