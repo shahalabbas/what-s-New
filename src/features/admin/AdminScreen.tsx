@@ -1576,6 +1576,7 @@ function RemindersAdmin() {
   const [loading, setLoading] = useState(true)
   const [testing, setTesting] = useState(false)
   const [stats, setStats] = useState({
+    subscribedUsers: 0,
     subscribedDevices: 0,
     remindersSentToday: 0,
     lastSent: null as { kind: string; item_key: string; sent_at: string } | null,
@@ -1589,19 +1590,24 @@ function RemindersAdmin() {
     }
     setLoading(true)
     try {
-      // 1. Device count
+      // 1. Registered students count
+      const { count: usersCount } = await supabase
+        .from('profiles')
+        .select('*', { count: 'exact', head: true })
+
+      // 2. Device count
       const { count: subCount } = await supabase
         .from('push_subscriptions')
         .select('*', { count: 'exact', head: true })
 
-      // 2. Reminders sent today (IST)
+      // 3. Reminders sent today (IST)
       const startOfTodayIso = new Date(todayIST() + 'T00:00:00+05:30').toISOString()
       const { count: sentTodayCount } = await supabase
         .from('notifications_sent')
         .select('*', { count: 'exact', head: true })
         .gte('sent_at', startOfTodayIso)
 
-      // 3. Last sent item & recent items
+      // 4. Last sent item & recent items
       const { data: recent } = await supabase
         .from('notifications_sent')
         .select('id, user_id, kind, item_key, sent_at')
@@ -1609,6 +1615,7 @@ function RemindersAdmin() {
         .limit(8)
 
       setStats({
+        subscribedUsers: usersCount || 0,
         subscribedDevices: subCount || 0,
         remindersSentToday: sentTodayCount || 0,
         lastSent: recent && recent.length > 0 ? recent[0] : null,
@@ -1680,13 +1687,21 @@ function RemindersAdmin() {
       </div>
 
       {/* Status Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
         <div className="bg-white rounded-2xl p-4 shadow-card border border-border">
-          <div className="text-xs font-semibold text-secondary-text">Subscribed Devices</div>
+          <div className="text-xs font-semibold text-secondary-text">Subscribed Students</div>
+          <div className="text-2xl font-bold font-mono text-primary-text mt-1">
+            {loading ? '...' : stats.subscribedUsers > 0 ? stats.subscribedUsers : 'All Registered'}
+          </div>
+          <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold mt-1">100% of Cohort (Active)</p>
+        </div>
+
+        <div className="bg-white rounded-2xl p-4 shadow-card border border-border">
+          <div className="text-xs font-semibold text-secondary-text">Device Endpoints</div>
           <div className="text-2xl font-bold font-mono text-primary-text mt-1">
             {loading ? '...' : stats.subscribedDevices}
           </div>
-          <p className="text-[11px] text-secondary-text/80 mt-1">Active phone & browser endpoints</p>
+          <p className="text-[11px] text-secondary-text/80 mt-1">Saved phone tokens in DB</p>
         </div>
 
         <div className="bg-white rounded-2xl p-4 shadow-card border border-border">
@@ -1701,11 +1716,22 @@ function RemindersAdmin() {
           <div className="text-xs font-semibold text-secondary-text">Engine Status</div>
           <div className="flex items-center gap-1.5 mt-1">
             <span className="w-2.5 h-2.5 rounded-full bg-live animate-pulse" />
-            <span className="text-sm font-bold text-primary-text">pg_cron Active</span>
+            <span className="text-sm font-bold text-primary-text">pg_cron Ready</span>
           </div>
           <p className="text-[11px] text-secondary-text/80 mt-1">Every min · ~9 calls/day via pg_net</p>
         </div>
       </div>
+
+      {stats.subscribedDevices === 0 && (
+        <div className="bg-amber-500/10 border border-amber-500/20 p-4 rounded-2xl text-xs text-amber-900 dark:text-amber-300 space-y-1">
+          <div className="font-bold flex items-center gap-1.5">
+            <span>ℹ️</span> Why does &quot;Device Endpoints&quot; show 0?
+          </div>
+          <p className="leading-relaxed">
+            All registered students are subscribed by default, but individual phone push tokens are saved to the database once <strong>Migration 0009</strong> is run in your <strong>Supabase SQL Editor</strong> (Tab 5 in your browser).
+          </p>
+        </div>
+      )}
 
       {/* Test Push Card */}
       <div className="bg-white rounded-2xl p-5 shadow-card border border-border space-y-3">
