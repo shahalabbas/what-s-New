@@ -1,4 +1,5 @@
 import { formatTime12 } from './timeUtils'
+import { supabase, isConfiguredSupabase } from './supabase'
 import type { ResolvedSession, MessMenu, MessMenuDay } from '../types'
 
 export type NotificationPermissionState = 'granted' | 'denied' | 'default' | 'unsupported'
@@ -239,6 +240,53 @@ export async function sendSampleTrialNotification(force = false): Promise<boolea
     return success
   } catch (err) {
     console.error('Failed to dispatch sample trial notification:', err)
+    return false
+  }
+}
+
+/**
+ * Broadcasts a sample notification across all devices logged into this account (or all users)
+ * via Supabase Realtime so that pressing the button on one device rings ALL connected devices!
+ */
+export async function broadcastSampleNotification(target: string = 'all'): Promise<boolean> {
+  try {
+    const logo = getAppLogoUrl()
+
+    // 1. Deliver to current device immediately
+    await sendLocalNotification({
+      title: "🔔 What's Next · Notification Trial",
+      body: "Sample reminder: 5-min pre-alerts for classes & mess meals are working!",
+      tag: 'whats-next-trial-sample',
+      icon: logo,
+      badge: logo,
+      data: { url: '/' },
+      vibrate: [200, 100, 200],
+    })
+
+    // 2. Broadcast via Supabase Realtime channel to all other logged-in devices
+    if (isConfiguredSupabase) {
+      const channel = supabase.channel('campus_notifications')
+      await channel.subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await channel.send({
+            type: 'broadcast',
+            event: 'sample_reminder',
+            payload: {
+              target,
+              title: "🔔 What's Next · Notification Trial",
+              body: "Sample reminder: 5-min pre-alerts for classes & mess meals are working!",
+              url: '/',
+            },
+          })
+          setTimeout(() => {
+            supabase.removeChannel(channel)
+          }, 3000)
+        }
+      })
+    }
+    return true
+  } catch (err) {
+    console.error('Broadcast notification error:', err)
     return false
   }
 }

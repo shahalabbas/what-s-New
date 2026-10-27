@@ -8,7 +8,7 @@ import { useMessMenu } from '../../hooks/useMessMenu'
 import { useProjects } from '../../hooks/useProjects'
 import { useNow } from '../../hooks/useNow'
 import { useNotifications } from '../../hooks/useNotifications'
-import { sendSampleTrialNotification } from '../../lib/notifications'
+import { sendSampleTrialNotification, broadcastSampleNotification } from '../../lib/notifications'
 import toast from 'react-hot-toast'
 import {
   formatTime12,
@@ -985,9 +985,9 @@ export function Dashboard() {
                   <button
                     type="button"
                     onClick={async () => {
-                      const ok = await sendSampleTrialNotification(true)
+                      const ok = await broadcastSampleNotification(user?.id || 'all')
                       if (ok) {
-                        toast.success('Sample notification dispatched! Check your screen.')
+                        toast.success('Sample notification dispatched to all your devices!')
                       } else {
                         toast.error('Could not dispatch notification. Check browser settings.')
                       }

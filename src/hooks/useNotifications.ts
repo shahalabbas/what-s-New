@@ -9,6 +9,7 @@ import {
   type NotificationPermissionState,
 } from '../lib/notifications'
 import { nowIST, formatIST, todayIST, timeToMinutes, currentISTMinutes } from '../lib/timeUtils'
+import { supabase, isConfiguredSupabase } from '../lib/supabase'
 import type { ResolvedSession, MessMenu, MessMenuDay } from '../types'
 
 const PREF_CLASS_ALERTS = 'whats_next_class_alerts'
@@ -65,6 +66,38 @@ export function useNotifications(options?: {
     return () => {
       window.removeEventListener('focus', updatePerm)
       document.removeEventListener('visibilitychange', updatePerm)
+    }
+  }, [])
+
+  // ─── Realtime Cross-Device Broadcast Listener ───────────────────────
+  useEffect(() => {
+    if (!isConfiguredSupabase) return
+    const channel = supabase.channel('campus_notifications_listener')
+
+    channel
+      .on('broadcast', { event: 'sample_reminder' }, async (msg: any) => {
+        const payload = msg?.payload
+        if (!payload) return
+
+        try {
+          const { data } = await supabase.auth.getUser()
+          const currentUserId = data?.user?.id
+          if (payload.target === 'all' || (currentUserId && payload.target === currentUserId)) {
+            sendLocalNotification({
+              title: payload.title || "🔔 What's Next · Notification Trial",
+              body: payload.body || "Sample reminder delivered across all your connected devices!",
+              tag: `broadcast-notif-${Date.now()}`,
+              data: { url: payload.url || '/' },
+            })
+          }
+        } catch (e) {
+          console.warn('Realtime broadcast handler error:', e)
+        }
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
     }
   }, [])
 
