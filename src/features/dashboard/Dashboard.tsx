@@ -26,7 +26,6 @@ import { PlacementDeadlineWidget } from './PlacementDeadlineWidget'
 import {
   subscribeDeviceToPush,
   unsubscribeDeviceFromPush,
-  getDevicePushSubscription,
   getNotificationPrefs,
   saveNotificationPrefs,
   isIosSafariNotInstalled,
@@ -96,9 +95,9 @@ export function Dashboard() {
     } catch {}
   }
 
-  // ─── 24/7 Push Reminders State ─────────────────────────────────────
+  // ─── 24/7 Push Reminders State (Subscribed by Default for All Users) ──
   const vapidPublicKey = getVapidPublicKey()
-  const [isPushSubscribed, setIsPushSubscribed] = useState<boolean>(false)
+  const [isPushSubscribed, setIsPushSubscribed] = useState<boolean>(true)
   const [isSubscribingPush, setIsSubscribingPush] = useState<boolean>(false)
   const [pushPrefs, setPushPrefs] = useState<NotificationPrefs>(DEFAULT_PREFS)
   const [isIosNotInstalled] = useState<boolean>(isIosSafariNotInstalled)
@@ -118,15 +117,32 @@ export function Dashboard() {
     } catch {}
   }
 
+  // Auto-subscribe every registered user automatically without manual steps
   useEffect(() => {
     if (!user?.id) return
-    getDevicePushSubscription().then((sub) => {
-      setIsPushSubscribed(Boolean(sub))
-    })
+
     getNotificationPrefs(user.id).then((p) => {
       setPushPrefs(p)
     })
-  }, [user?.id, showProfileSheet])
+
+    // If phone/browser permission is granted, register device in background
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      if (Notification.permission === 'granted') {
+        setIsPushSubscribed(true)
+        subscribeDeviceToPush(user.id, vapidPublicKey).catch(() => {})
+      } else if (Notification.permission === 'default') {
+        // Automatically prompt for device notification permission
+        Notification.requestPermission()
+          .then((perm) => {
+            if (perm === 'granted') {
+              setIsPushSubscribed(true)
+              subscribeDeviceToPush(user.id, vapidPublicKey).catch(() => {})
+            }
+          })
+          .catch(() => {})
+      }
+    }
+  }, [user?.id, vapidPublicKey])
 
   // One-time trial sample notification dispatched to every user once
   useEffect(() => {
@@ -136,18 +152,25 @@ export function Dashboard() {
     }
   }, [])
 
-  const handleTurnOnPush = async () => {
-    if (!user?.id) return
-    setIsSubscribingPush(true)
-    const res = await subscribeDeviceToPush(user.id, vapidPublicKey)
-    setIsSubscribingPush(false)
-    if (res.success) {
-      setIsPushSubscribed(true)
-      toast.success('24/7 Reminders enabled for this device!')
-      // Dispatch sample notification trial immediately to the user's screen
-      sendSampleTrialNotification(true).catch(() => {})
-    } else {
-      toast.error(res.error || 'Could not enable reminders')
+  const handleAllowNotifications = async () => {
+    if (typeof window === 'undefined' || !('Notification' in window)) return
+    try {
+      setIsSubscribingPush(true)
+      const perm = await Notification.requestPermission()
+      setIsSubscribingPush(false)
+      if (perm === 'granted') {
+        setIsPushSubscribed(true)
+        if (user?.id) {
+          await subscribeDeviceToPush(user.id, vapidPublicKey)
+        }
+        toast.success('Phone notifications enabled!')
+        broadcastSampleNotification(user?.id || 'all')
+      } else if (perm === 'denied') {
+        toast.error('Notification permission was blocked in settings.')
+      }
+    } catch (e) {
+      console.error('Error requesting notification permission:', e)
+      setIsSubscribingPush(false)
     }
   }
 
@@ -859,13 +882,13 @@ export function Dashboard() {
                       : 'bg-accent/10 text-accent'
                   }`}
                 >
-                  {isPushSubscribed
-                    ? 'Active (24/7 Push)'
+                  {typeof Notification !== 'undefined' && Notification.permission === 'denied'
+                    ? 'Blocked in Settings'
                     : isIosNotInstalled
                     ? 'Install Required'
-                    : typeof Notification !== 'undefined' && Notification.permission === 'denied'
-                    ? 'Blocked in Settings'
-                    : 'Off'}
+                    : typeof Notification !== 'undefined' && Notification.permission === 'default'
+                    ? 'Permission Needed'
+                    : 'Active (24/7 Push)'}
                 </span>
               </div>
               <p className="text-[11px] text-secondary-text leading-relaxed">
@@ -900,28 +923,28 @@ export function Dashboard() {
                   </p>
                 </div>
               </div>
-            ) : !isPushSubscribed ? (
-              /* Condition 3: Not subscribed yet - clean "Turn on reminders" button */
+            ) : typeof Notification !== 'undefined' && Notification.permission === 'default' ? (
+              /* Condition 3: Permission needed on this specific device */
               <button
                 type="button"
                 disabled={isSubscribingPush}
-                onClick={handleTurnOnPush}
+                onClick={handleAllowNotifications}
                 className="w-full py-2.5 px-3 rounded-xl bg-accent text-white text-xs font-bold shadow-xs hover:bg-accent/90 disabled:opacity-50 transition-all flex items-center justify-center gap-1.5"
               >
                 {isSubscribingPush ? (
                   <>
                     <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>Connecting Device...</span>
+                    <span>Enabling...</span>
                   </>
                 ) : (
                   <>
                     <span>🔔</span>
-                    <span>Turn on reminders</span>
+                    <span>Allow Notifications on this Phone</span>
                   </>
                 )}
               </button>
             ) : (
-              /* Condition 4: Subscribed - Toggles & Device Management */
+              /* Condition 4: Active by default for all registered users */
               <div className="space-y-3 pt-1 border-t border-border/60 dark:border-white/10">
                 {/* Class Reminders Toggle */}
                 <div className="flex items-center justify-between">

@@ -45,7 +45,7 @@ export function useNotifications(options?: {
 
   // Auto-request permission when user is registered/active
   useEffect(() => {
-    if (options?.autoRequest && isNotificationSupported() && Notification.permission === 'default') {
+    if ((options?.autoRequest !== false) && isNotificationSupported() && Notification.permission === 'default') {
       try {
         Notification.requestPermission()
           .then((res) => {
