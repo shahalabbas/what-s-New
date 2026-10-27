@@ -1694,6 +1694,27 @@ function RemindersAdmin() {
     fetchStats()
   }
 
+  const handleHardRefresh = async () => {
+    setLoading(true)
+    toast('Clearing cache & loading freshest version...', { icon: '🔄' })
+    try {
+      if (typeof window !== 'undefined') {
+        if ('caches' in window) {
+          const keys = await caches.keys()
+          await Promise.all(keys.map((k) => caches.delete(k)))
+        }
+        if ('serviceWorker' in navigator) {
+          const regs = await navigator.serviceWorker.getRegistrations()
+          for (const reg of regs) {
+            await reg.update().catch(() => {})
+          }
+        }
+        localStorage.removeItem('whats_next_bundle_version')
+      }
+    } catch {}
+    window.location.href = window.location.pathname + '?reload=' + Date.now()
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -1702,11 +1723,11 @@ function RemindersAdmin() {
           <p className="text-xs text-secondary-text">pg_cron 5-min dispatch & Web Push engine</p>
         </div>
         <button
-          onClick={fetchStats}
+          onClick={handleHardRefresh}
           disabled={loading}
-          className="px-3 py-1.5 bg-surface text-secondary-text hover:text-primary-text rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors"
+          className="px-3 py-1.5 bg-surface text-secondary-text hover:text-primary-text rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors active:scale-95"
         >
-          <span>🔄</span> Refresh
+          <span>🔄</span> Hard Refresh
         </button>
       </div>
 
