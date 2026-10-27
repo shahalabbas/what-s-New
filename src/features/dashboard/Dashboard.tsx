@@ -885,15 +885,20 @@ export function Dashboard() {
                 </p>
               </div>
             ) : typeof Notification !== 'undefined' && Notification.permission === 'denied' ? (
-              /* Condition 2: Permission denied in phone settings */
+              /* Condition 2: Permission denied in browser / phone settings */
               <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-[11px] text-rose-900 dark:text-rose-300 space-y-1.5">
                 <p className="font-bold flex items-center gap-1.5">
                   <span>⚠️</span>
                   <span>Notifications Blocked</span>
                 </p>
-                <p className="leading-relaxed">
-                  Notification access is disabled. To re-enable reminders, open your phone's <strong>Settings &gt; Safari / What's Next &gt; Notifications</strong> and allow alerts.
-                </p>
+                <div className="leading-relaxed space-y-1">
+                  <p>
+                    <strong>On Mac Safari:</strong> Press <kbd className="px-1.5 py-0.5 rounded bg-black/10 dark:bg-white/10 font-mono">⌘ ,</kbd> (or click <strong>Safari &gt; Settings</strong> in menu bar) &gt; <strong>Websites</strong> &gt; <strong>Notifications</strong>, find <em>what-s-new-shahalabbas.vercel.app</em>, and switch it to <strong>Allow</strong>.
+                  </p>
+                  <p className="opacity-80">
+                    <strong>On iPhone:</strong> Open phone <strong>Settings &gt; Safari / What's Next &gt; Notifications</strong> and allow alerts.
+                  </p>
+                </div>
               </div>
             ) : !isPushSubscribed ? (
               /* Condition 3: Not subscribed yet - clean "Turn on reminders" button */
