@@ -980,8 +980,24 @@ export function Dashboard() {
                   )}
                 </div>
 
-                {/* Unsubscribe device action */}
-                <div className="pt-2 border-t border-border/40 dark:border-white/5 flex justify-end">
+                {/* Actions: Send Sample Notification Now & Unsubscribe */}
+                <div className="pt-2.5 border-t border-border/40 dark:border-white/5 flex items-center justify-between gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const ok = await sendSampleTrialNotification(true)
+                      if (ok) {
+                        toast.success('Sample notification dispatched! Check your screen.')
+                      } else {
+                        toast.error('Could not dispatch notification. Check browser settings.')
+                      }
+                    }}
+                    className="py-1.5 px-3 rounded-xl bg-accent/10 hover:bg-accent/20 text-accent text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95"
+                  >
+                    <span>🔔</span>
+                    <span>Send sample notification now</span>
+                  </button>
+
                   <button
                     type="button"
                     onClick={handleTurnOffPush}

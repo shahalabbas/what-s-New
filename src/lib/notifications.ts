@@ -143,6 +143,33 @@ export async function sendLocalNotification(payload: NotificationPayload): Promi
 
   const logo = getAppLogoUrl()
 
+  // 1. On desktop browsers (macOS Safari, Chrome, Edge), window.Notification directly triggers macOS/Windows banners
+  const isDesktop =
+    typeof navigator !== 'undefined' &&
+    /macintosh|windows|linux/i.test(navigator.userAgent) &&
+    !/mobile/i.test(navigator.userAgent)
+
+  if (isDesktop) {
+    try {
+      const notif = new Notification(payload.title, {
+        body: payload.body,
+        icon: payload.icon || logo,
+        tag: payload.tag,
+        data: payload.data,
+      })
+      notif.onclick = () => {
+        window.focus()
+        if (payload.data?.url && typeof window !== 'undefined') {
+          window.location.href = payload.data.url
+        }
+      }
+      return true
+    } catch (err) {
+      console.warn('Desktop window.Notification error, trying service worker:', err)
+    }
+  }
+
+  // 2. Try Service Worker showNotification (standard for PWA & mobile)
   try {
     if ('serviceWorker' in navigator) {
       const reg = await navigator.serviceWorker.ready
@@ -159,8 +186,12 @@ export async function sendLocalNotification(payload: NotificationPayload): Promi
         return true
       }
     }
+  } catch (swErr) {
+    console.warn('Service worker showNotification error:', swErr)
+  }
 
-    // Fallback for desktop browser without service worker
+  // 3. Fallback to standard Notification
+  try {
     new Notification(payload.title, {
       body: payload.body,
       icon: payload.icon || logo,
