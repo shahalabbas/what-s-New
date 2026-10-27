@@ -4,6 +4,63 @@ import type { ResolvedSession, MessMenu, MessMenuDay } from '../types'
 
 export type NotificationPermissionState = 'granted' | 'denied' | 'default' | 'unsupported'
 
+/**
+ * Plays a pleasant, modern two-tone notification chime using Web Audio API
+ * (zero external audio assets needed, works across macOS Safari, iOS, Android, Chrome)
+ */
+export function playNotificationChime() {
+  if (typeof window === 'undefined') return
+  try {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext
+    if (!AudioContextClass) return
+    const ctx = new AudioContextClass()
+
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {})
+    }
+
+    const now = ctx.currentTime
+
+    // Tone 1: E5 (659.25 Hz) - gentle chime attack
+    const osc1 = ctx.createOscillator()
+    const gain1 = ctx.createGain()
+    osc1.type = 'sine'
+    osc1.frequency.setValueAtTime(659.25, now)
+    gain1.gain.setValueAtTime(0.2, now)
+    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.35)
+    osc1.connect(gain1)
+    gain1.connect(ctx.destination)
+    osc1.start(now)
+    osc1.stop(now + 0.35)
+
+    // Tone 2: A5 (880.00 Hz) - bell resolve
+    const osc2 = ctx.createOscillator()
+    const gain2 = ctx.createGain()
+    osc2.type = 'sine'
+    osc2.frequency.setValueAtTime(880.0, now + 0.12)
+    gain2.gain.setValueAtTime(0.25, now + 0.12)
+    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.65)
+    osc2.connect(gain2)
+    gain2.connect(ctx.destination)
+    osc2.start(now + 0.12)
+    osc2.stop(now + 0.65)
+  } catch (err) {
+    console.warn('Audio chime could not play:', err)
+  }
+}
+
+/**
+ * Dispatches an in-app banner notification event for the top viewport overlay
+ */
+export function triggerInAppBanner(title: string, body: string, url: string = '/') {
+  if (typeof window === 'undefined') return
+  window.dispatchEvent(
+    new CustomEvent('whats_next_in_app_notification', {
+      detail: { title, body, url },
+    })
+  )
+}
+
 export function isNotificationSupported(): boolean {
   return typeof window !== 'undefined' && 'Notification' in window
 }
@@ -135,42 +192,21 @@ export function formatMessNotification(
 
 /**
  * Dispatch local notification via Service Worker registration (or fallback window Notification)
- * using the official What's Next app logo
+ * using the official What's Next app logo, and trigger in-app visual and sound cues
  */
 export async function sendLocalNotification(payload: NotificationPayload): Promise<boolean> {
-  if (!isNotificationSupported() || Notification.permission !== 'granted') {
+  // Always trigger sound & in-app visual cues for guaranteed feedback
+  playNotificationChime()
+  triggerInAppBanner(payload.title, payload.body, payload.data?.url || '/')
+
+  if (!isNotificationSupported()) {
     return false
   }
 
   const logo = getAppLogoUrl()
+  let delivered = false
 
-  // 1. On desktop browsers (macOS Safari, Chrome, Edge), window.Notification directly triggers macOS/Windows banners
-  const isDesktop =
-    typeof navigator !== 'undefined' &&
-    /macintosh|windows|linux/i.test(navigator.userAgent) &&
-    !/mobile/i.test(navigator.userAgent)
-
-  if (isDesktop) {
-    try {
-      const notif = new Notification(payload.title, {
-        body: payload.body,
-        icon: payload.icon || logo,
-        tag: payload.tag,
-        data: payload.data,
-      })
-      notif.onclick = () => {
-        window.focus()
-        if (payload.data?.url && typeof window !== 'undefined') {
-          window.location.href = payload.data.url
-        }
-      }
-      return true
-    } catch (err) {
-      console.warn('Desktop window.Notification error, trying service worker:', err)
-    }
-  }
-
-  // 2. Try Service Worker showNotification (standard for PWA & mobile)
+  // 1. Service Worker showNotification (PWA standard for macOS Safari 16.4+, Chrome, iOS PWA, Android)
   try {
     if ('serviceWorker' in navigator) {
       const reg = await navigator.serviceWorker.ready
@@ -184,26 +220,48 @@ export async function sendLocalNotification(payload: NotificationPayload): Promi
           // @ts-ignore vibrate in NotificationOptions
           vibrate: payload.vibrate || [150, 80, 150],
         })
-        return true
+        delivered = true
       }
     }
   } catch (swErr) {
     console.warn('Service worker showNotification error:', swErr)
   }
 
-  // 3. Fallback to standard Notification
-  try {
-    new Notification(payload.title, {
-      body: payload.body,
-      icon: payload.icon || logo,
-      tag: payload.tag,
-      data: payload.data,
-    })
-    return true
-  } catch (err) {
-    console.error('Failed to dispatch notification:', err)
-    return false
+  // 2. Window Notification (Native desktop system banners)
+  if (!delivered && Notification.permission === 'granted') {
+    try {
+      const notif = new Notification(payload.title, {
+        body: payload.body,
+        icon: payload.icon || logo,
+        tag: payload.tag,
+        data: payload.data,
+      })
+      notif.onclick = () => {
+        window.focus()
+        if (payload.data?.url && typeof window !== 'undefined') {
+          window.location.href = payload.data.url
+        }
+      }
+      delivered = true
+    } catch (err) {
+      console.warn('Desktop window.Notification error:', err)
+    }
   }
+
+  // 3. Fallback: message active service worker controller
+  try {
+    if (!delivered && navigator.serviceWorker?.controller) {
+      navigator.serviceWorker.controller.postMessage({
+        type: 'SHOW_NOTIFICATION',
+        payload,
+      })
+      delivered = true
+    }
+  } catch (msgErr) {
+    console.warn('Service worker postMessage error:', msgErr)
+  }
+
+  return delivered
 }
 
 export const TRIAL_NOTIFICATION_KEY = 'whats_next_trial_notification_sample_v1'

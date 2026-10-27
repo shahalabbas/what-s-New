@@ -50,11 +50,14 @@ ALTER TABLE public.push_subscriptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notification_prefs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications_sent ENABLE ROW LEVEL SECURITY;
 
--- push_subscriptions: Users manage only their own devices
+-- push_subscriptions: Users manage own devices; Admins view all for dashboard
 DROP POLICY IF EXISTS "Users view own subscriptions" ON public.push_subscriptions;
 CREATE POLICY "Users view own subscriptions"
   ON public.push_subscriptions FOR SELECT
-  USING (auth.uid() = user_id);
+  USING (
+    auth.uid() = user_id OR
+    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+  );
 
 DROP POLICY IF EXISTS "Users insert own subscriptions" ON public.push_subscriptions;
 CREATE POLICY "Users insert own subscriptions"
@@ -75,7 +78,10 @@ CREATE POLICY "Users delete own subscriptions"
 DROP POLICY IF EXISTS "Users view own prefs" ON public.notification_prefs;
 CREATE POLICY "Users view own prefs"
   ON public.notification_prefs FOR SELECT
-  USING (auth.uid() = user_id);
+  USING (
+    auth.uid() = user_id OR
+    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+  );
 
 DROP POLICY IF EXISTS "Users insert own prefs" ON public.notification_prefs;
 CREATE POLICY "Users insert own prefs"
@@ -87,11 +93,37 @@ CREATE POLICY "Users update own prefs"
   ON public.notification_prefs FOR UPDATE
   USING (auth.uid() = user_id);
 
--- notifications_sent: Owner can view delivery log; service_role has full access
+-- notifications_sent: Owner can view delivery log; Admins view all for dashboard; service_role has full access
 DROP POLICY IF EXISTS "Users view own sent logs" ON public.notifications_sent;
 CREATE POLICY "Users view own sent logs"
   ON public.notifications_sent FOR SELECT
-  USING (auth.uid() = user_id);
+  USING (
+    auth.uid() = user_id OR
+    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+  );
+
+-- Auto-subscribe all existing and new registered students by default
+INSERT INTO public.notification_prefs (user_id, classes, meals, meal_types, updated_at)
+SELECT id, true, true, '{breakfast,lunch,hi_tea,dinner}', now()
+FROM public.profiles
+ON CONFLICT (user_id) DO NOTHING;
+
+-- Trigger to auto-subscribe any newly created student profile
+CREATE OR REPLACE FUNCTION public.handle_new_profile_notification_prefs()
+RETURNS trigger AS $$
+BEGIN
+  INSERT INTO public.notification_prefs (user_id, classes, meals, meal_types, updated_at)
+  VALUES (NEW.id, true, true, '{breakfast,lunch,hi_tea,dinner}', now())
+  ON CONFLICT (user_id) DO NOTHING;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS tr_new_profile_notification_prefs ON public.profiles;
+CREATE TRIGGER tr_new_profile_notification_prefs
+  AFTER INSERT ON public.profiles
+  FOR EACH ROW
+  EXECUTE FUNCTION public.handle_new_profile_notification_prefs();
 
 -- 6. SQL Function: due_reminders() (Security Definer, Asia/Kolkata time window)
 CREATE OR REPLACE FUNCTION public.due_reminders(current_time_override TIMESTAMPTZ DEFAULT NULL)

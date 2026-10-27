@@ -72,7 +72,7 @@ export function useNotifications(options?: {
   // ─── Realtime Cross-Device Broadcast Listener ───────────────────────
   useEffect(() => {
     if (!isConfiguredSupabase) return
-    const channel = supabase.channel('campus_notifications_listener')
+    const channel = supabase.channel('campus_notifications')
 
     channel
       .on('broadcast', { event: 'sample_reminder' }, async (msg: any) => {
@@ -83,7 +83,7 @@ export function useNotifications(options?: {
           const { data } = await supabase.auth.getUser()
           const currentUserId = data?.user?.id
           if (payload.target === 'all' || (currentUserId && payload.target === currentUserId)) {
-            sendLocalNotification({
+            await sendLocalNotification({
               title: payload.title || "🔔 What's Next · Notification Trial",
               body: payload.body || "Sample reminder delivered across all your connected devices!",
               tag: `broadcast-notif-${Date.now()}`,

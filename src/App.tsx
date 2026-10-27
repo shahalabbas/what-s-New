@@ -4,6 +4,7 @@ import { useAuth } from './hooks/useAuth'
 import { useTheme } from './hooks/useTheme'
 import { TabBar } from './components/TabBar'
 import { InstallBanner } from './components/InstallBanner'
+import { InAppNotificationBanner } from './components/InAppNotificationBanner'
 import { LoginScreen } from './features/auth/LoginScreen'
 import { BlockedScreen } from './features/auth/BlockedScreen'
 import { Dashboard } from './features/dashboard/Dashboard'
@@ -91,6 +92,7 @@ export function App() {
   return (
     <div className="relative min-h-screen bg-surface">
       <Toaster position="top-center" toastOptions={{ duration: 4000 }} />
+      <InAppNotificationBanner />
       <InstallBanner />
       <NotificationWatcher />
 
